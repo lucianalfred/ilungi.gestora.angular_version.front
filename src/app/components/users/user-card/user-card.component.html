@@ -1,0 +1,145 @@
+<div [class]="'bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-lg transition-all group relative overflow-hidden ' + (isLoading ? 'opacity-70 pointer-events-none' : '')">
+  
+  <!-- Loading Overlay -->
+  @if (isLoading) {
+    <div class="absolute inset-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-10">
+      <app-icon name="Loader2" class="w-8 h-8 animate-spin text-emerald-500"></app-icon>
+    </div>
+  }
+
+  <div class="flex gap-4">
+    <!-- Avatar -->
+    <button 
+      type="button" 
+      (click)="handleAvatarUpload()" 
+      [class]="'flex-shrink-0 w-16 h-16 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden relative ' + (isAdmin && !isLoading ? 'cursor-pointer hover:opacity-80 transition-opacity group' : 'cursor-default')"
+      [disabled]="!isAdmin || isLoading"
+      [title]="isAdmin && !isLoading ? 'Clique para alterar avatar' : ''"
+    >
+      @if (user.avatar) {
+        <img 
+          [src]="user.avatar" 
+          [alt]="user.name" 
+          class="w-full h-full object-cover"
+          loading="lazy"
+        />
+      } @else {
+        <app-icon name="UserIcon" [size]="32" class="text-slate-400"></app-icon>
+      }
+      
+      @if (isAdmin && !isLoading) {
+        <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
+          <span class="text-white text-xs font-bold">Alterar</span>
+        </div>
+      }
+    </button>
+
+    <!-- User Info -->
+    <div class="flex-1 min-w-0">
+      <div class="flex items-start justify-between">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2 flex-wrap">
+            <p class="font-black text-slate-900 dark:text-white truncate max-w-[150px]">
+              {{ user.name }}
+            </p>
+            @if (isCurrentUser) {
+              <span class="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full">
+                Você
+              </span>
+            }
+          </div>
+          
+          <div class="flex items-center gap-1">
+            <span class="text-[10px] font-bold text-slate-600 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+              {{ user.role === UserRole.ADMIN ? 'Administrador' : 'Funcionário' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        @if (canEdit || canDelete) {
+          <div class="flex gap-1 ml-2">
+            @if (canEdit) {
+              <button 
+                (click)="handleEdit()" 
+                class="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+                title="Editar utilizador"
+                [disabled]="isLoading"
+              >
+                <app-icon name="Pencil" [size]="16"></app-icon>
+              </button>
+            }
+            @if (canDelete) {
+              <button 
+                (click)="handleDelete()" 
+                class="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-rose-500 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 relative"
+                title="Eliminar utilizador"
+                [disabled]="isLoading"
+              >
+                @if (isLocalDeleting()) {
+                  <app-icon name="Loader2" [size]="16" class="animate-spin"></app-icon>
+                } @else {
+                  <app-icon name="Trash2" [size]="16"></app-icon>
+                }
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Email -->
+      <div class="flex items-center gap-2 mt-3 text-xs text-slate-500">
+        <app-icon name="Mail" [size]="14" class="flex-shrink-0"></app-icon>
+        <a 
+          [href]="'mailto:' + user.email"
+          class="truncate hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+          [title]="user.email"
+          (click)="$event.stopPropagation()"
+        >
+          {{ user.email }}
+        </a>
+      </div>
+
+      <!-- Phone -->
+      @if (user.phone) {
+        <div class="flex items-center gap-2 mt-1.5 text-xs text-slate-500">
+          <app-icon name="Phone" [size]="14" class="flex-shrink-0"></app-icon>
+          <a 
+            [href]="'tel:' + user.phone"
+            class="truncate hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+            (click)="$event.stopPropagation()"
+          >
+            {{ user.phone }}
+          </a>
+        </div>
+      }
+
+      <!-- Position -->
+      @if (user.position) {
+        <div class="flex items-center gap-2 mt-1.5 text-xs text-slate-500">
+          <app-icon name="Briefcase" [size]="14" class="flex-shrink-0"></app-icon>
+          <span class="truncate">{{ user.position }}</span>
+        </div>
+      }
+
+      <!-- Department -->
+      @if (user.department) {
+        <div class="mt-2">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            {{ user.department }}
+          </span>
+        </div>
+      }
+
+      <!-- Created At -->
+      @if (createdAt) {
+        <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <div class="flex items-center gap-2 text-[9px] text-slate-400">
+            <app-icon name="Calendar" [size]="12"></app-icon>
+            <span>Membro desde {{ createdAt }}</span>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>

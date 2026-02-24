@@ -18,6 +18,9 @@
     "@angular/platform-browser": "^17.3.0",
     "@angular/platform-browser-dynamic": "^17.3.0",
     "@angular/router": "^17.3.0",
+    "@tailwindcss/cli": "^4.2.1",
+    "lucide": "^0.575.0",
+    "lucide-angular": "^0.575.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.14.3"

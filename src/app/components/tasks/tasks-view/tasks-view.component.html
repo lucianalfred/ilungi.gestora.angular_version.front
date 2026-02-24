@@ -1,0 +1,84 @@
+<div class="max-w-7xl mx-auto space-y-10 animate-in p-6">
+  
+  <!-- Mostrar formulário em vez da lista quando está aberto -->
+  <ng-container *ngIf="showTaskForm; else tasksList">
+    <app-task-modal 
+      [isOpen]="true"
+      [editingTaskId]="editingTaskId"
+      (onClose)="closeTaskModal()">
+    </app-task-modal>
+  </ng-container>
+
+  <ng-template #tasksList>
+    <!-- Header com filtros -->
+    <div class="flex flex-col lg:flex-row items-center justify-between gap-6">
+      <div class="flex gap-4 w-full lg:w-auto">
+        <!-- Search -->
+        <div class="relative flex-1 lg:flex-initial">
+          <input 
+            [placeholder]="t.search || 'Pesquisar...'"
+            [ngModel]="searchQuery"
+            (ngModelChange)="searchChange.emit($event)"
+            class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 pl-12 pr-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-emerald-500/5 transition-all w-full lg:min-w-[400px] font-bold text-sm shadow-sm"
+          />
+          <app-icon 
+            name="search" 
+            class="absolute left-4 top-4.5 text-slate-300" 
+            [size]="18">
+          </app-icon>
+        </div>
+        
+        <!-- Status Filter -->
+        <select 
+          [ngModel]="statusFilter"
+          (ngModelChange)="statusFilterChange.emit($event)"
+          class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-6 py-4 rounded-2xl font-bold text-[10px] uppercase tracking-widest text-slate-500 outline-none cursor-pointer shadow-sm"
+        >
+          <option value="all">{{ t.allStatuses || 'Todos os status' }}</option>
+          <option *ngFor="let status of statusOptions" [value]="status.value">
+            {{ status.label }}
+          </option>
+        </select>
+      </div>
+      
+      <!-- Create Task Button (Admin only) -->
+      <button *ngIf="user && user.role === UserRole.ADMIN"
+              (click)="openCreateTaskModal()"
+              class="px-6 sm:px-10 py-4 sm:py-5 rounded-2xl shadow-xl shadow-emerald-500/20 bg-emerald-500 hover:bg-emerald-600 transition-colors text-white font-bold flex items-center gap-2">
+        <app-icon name="plus" [size]="18" class="sm:w-5 sm:h-5"></app-icon>
+        {{ t.createTask || 'Nova Tarefa' }}
+      </button>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="flex justify-center py-20">
+      <div class="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <!-- Tasks Grid - CORRIGIDO: usando filteredTasks em vez de tasks -->
+    <div *ngIf="!isLoading" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+      
+      <!-- Lista de tarefas filtradas -->
+      <ng-container *ngIf="filteredTasks.length > 0; else noTasks">
+        <app-task-card *ngFor="let task of filteredTasks"
+          [task]="task"
+          [user]="user"
+          [users]="users"
+          (onAdvance)="onAdvanceTask(task)"
+          (onRegress)="onRegressTask(task)"
+          (onDelete)="onDeleteTask(task)"
+          [onEdit]="getEditHandler(task.id)"
+          (onAddComment)="onAddCommentToTask(task.id, $event)">
+        </app-task-card>
+      </ng-container>
+
+      <!-- Mensagem quando não há tarefas -->
+      <ng-template #noTasks>
+        <div class="col-span-full py-20 text-center space-y-6">
+          <app-icon name="clipboard-list" class="mx-auto text-slate-100 dark:text-slate-800" [size]="100"></app-icon>
+          <p class="text-slate-400 font-bold uppercase tracking-widest">{{ t.noTasks || 'Nenhuma tarefa encontrada' }}</p>
+        </div>
+      </ng-template>
+    </div>
+  </ng-template>
+</div>

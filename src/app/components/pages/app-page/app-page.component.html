@@ -1,0 +1,244 @@
+<div class="h-screen flex bg-[#f8fafc] dark:bg-slate-950 transition-all font-sans overflow-hidden">
+
+  <!-- Hidden Avatar Input -->
+  <input
+    #avatarInput
+    id="avatarInput"
+    type="file"
+    accept="image/*"
+    class="hidden"
+    (change)="handleAvatarFileChange($event)"
+  />
+
+  <!-- Sidebar -->
+  <aside class="w-[280px] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col">
+
+    <div class="p-6 flex items-center gap-3">
+      <div class="bg-emerald-500 p-2 rounded-xl">
+        <app-icon name="workflow" [size]="22" class="text-white"></app-icon>
+      </div>
+      <span class="text-xl font-black tracking-tight text-slate-900 dark:text-white">
+        GESTORA
+      </span>
+    </div>
+
+    <nav class="flex-1 px-4 space-y-2">
+
+      <app-sidebar-nav-item
+        icon="layout-dashboard"
+        label="Dashboard"
+        [active]="activeTab() === 'dashboard'"
+        (click)="setActiveTabSafe('dashboard')">
+      </app-sidebar-nav-item>
+
+      <app-sidebar-nav-item
+        icon="check-square"
+        label="Tasks"
+        [active]="activeTab() === 'tasks'"
+        (click)="setActiveTabSafe('tasks')">
+      </app-sidebar-nav-item>
+
+      <ng-container *ngIf="user?.role === UserRole.ADMIN">
+
+        <app-sidebar-nav-item
+          icon="users"
+          label="Users"
+          [active]="activeTab() === 'users'"
+          (click)="setActiveTabSafe('users')">
+        </app-sidebar-nav-item>
+
+        <app-sidebar-nav-item
+          icon="bar-chart-2"
+          label="Reports"
+          [active]="activeTab() === 'reports'"
+          (click)="setActiveTabSafe('reports')">
+        </app-sidebar-nav-item>
+
+      </ng-container>
+
+      <app-sidebar-nav-item
+        icon="user"
+        label="Profile"
+        [active]="activeTab() === 'profile'"
+        (click)="setActiveTabSafe('profile')">
+      </app-sidebar-nav-item>
+
+    </nav>
+
+    <div class="p-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
+
+      <button
+        (click)="toggleTheme()"
+        class="flex items-center gap-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white w-full">
+        <app-icon [name]="theme === 'light' ? 'moon' : 'sun'" [size]="20"></app-icon>
+        <span>{{ theme === 'light' ? 'Modo Escuro' : 'Modo Claro' }}</span>
+      </button>
+
+      <button
+        (click)="toggleLanguage()"
+        class="flex items-center gap-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white w-full">
+        <app-icon name="globe" [size]="20"></app-icon>
+        <span>{{ languageService.lang() === 'pt' ? 'Português' : 'English' }}</span>
+      </button>
+
+      <button
+        (click)="logout()"
+        class="flex items-center gap-3 text-rose-500 hover:text-rose-600 w-full">
+        <app-icon name="log-out" [size]="20"></app-icon>
+        <span>Logout</span>
+      </button>
+
+    </div>
+
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 flex flex-col">
+
+    <!-- HEADER -->
+    <header class="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-10 flex items-center justify-between">
+
+      <h2 class="text-lg font-black text-slate-900 dark:text-white capitalize">
+        {{ pageTitle }}
+      </h2>
+
+      <div class="flex items-center gap-6">
+
+        <!-- Notifications -->
+        <div class="relative">
+
+          <button
+            (click)="isNotificationsOpen.set(!isNotificationsOpen())"
+            class="p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+            <app-icon name="bell" [size]="20"></app-icon>
+
+            <span
+              *ngIf="hasUnreadNotifications()"
+              class="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white dark:border-slate-900">
+            </span>
+          </button>
+
+          <!-- Dropdown -->
+          <div
+            *ngIf="isNotificationsOpen()"
+            class="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+
+            <div class="p-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+              <span class="font-bold text-sm text-slate-900 dark:text-white">
+                Notificações
+              </span>
+              <button
+                (click)="markAllNotificationsAsRead()"
+                class="text-xs text-emerald-600 hover:text-emerald-700">
+                Marcar todas
+              </button>
+            </div>
+
+            <div class="max-h-80 overflow-y-auto p-1">
+
+              <p *ngIf="notifications.length === 0"
+                 class="p-4 text-sm text-center text-slate-500">
+                Sem notificações
+              </p>
+
+              <div
+                *ngFor="let notif of notifications"
+                class="p-3 border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+                (click)="markNotificationAsRead(notif.id)">
+
+                <div class="flex justify-between items-start gap-2">
+                  <span class="text-sm text-slate-900 dark:text-white flex-1">
+                    {{ notif.message }}
+                  </span>
+
+                  <app-icon
+                    *ngIf="notif.read"
+                    name="check"
+                    [size]="14"
+                    class="text-emerald-500">
+                  </app-icon>
+                </div>
+
+                <small class="text-xs text-slate-400">
+                  {{ notif.timestamp | date:'dd/MM/yyyy HH:mm' }}
+                </small>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </header>
+
+    <!-- CONTEÚDO DAS TABS -->
+    <div class="flex-1 overflow-auto">
+
+      <!-- Loading State -->
+      <div *ngIf="!user" class="h-full flex items-center justify-center">
+        <div class="text-slate-500">Carregando...</div>
+      </div>
+
+      <!-- Conteúdo com user carregado -->
+      <ng-container *ngIf="user">
+        <!-- Dashboard View -->
+        <div *ngIf="activeTab() === 'dashboard'" class="h-full">
+          <app-dashboard-view 
+            [stats]="stats"
+            [tasks]="tasks"
+            [users]="users"
+            [user]="user">
+          </app-dashboard-view>
+        </div>
+
+        <!-- Tasks View - VERIFIQUE SE ESTÁ CORRETAMENTE FECHADA -->
+        <div *ngIf="activeTab() === 'tasks'" class="h-full">
+          <app-tasks-view 
+            [tasks]="tasks"
+            [users]="users"
+            [user]="user"
+            [searchQuery]="searchQuery()"
+            [statusFilter]="statusFilter()"
+            [isLoading]="false"
+            (searchChange)="handleSearchChange($event)"
+            (statusFilterChange)="handleStatusFilterChange($event)"
+            (advanceStatus)="handleAdvanceStatus($event)"
+            (regressStatus)="handleRegressStatus($event)"
+            (deleteTask)="handleDeleteTask($event)"
+            (addComment)="handleAddComment($event.taskId, $event.text)">
+          </app-tasks-view>  <!-- Esta tag deve estar fechada corretamente -->
+        </div>
+
+        <!-- Users View -->
+        <div *ngIf="activeTab() === 'users' && user.role === UserRole.ADMIN" class="h-full">
+          <app-users-view 
+            [users]="users"
+            [currentUser]="user"
+            (updateUser)="handleUpdateUser($event.id, $event)"
+            (deleteUser)="handleDeleteUser($event)">
+          </app-users-view>
+        </div>
+
+        <!-- Reports View -->
+        <div *ngIf="activeTab() === 'reports' && user.role === UserRole.ADMIN" class="h-full">
+          <app-reports-view></app-reports-view>
+        </div>
+
+        <!-- Profile View -->
+        <div *ngIf="activeTab() === 'profile'" class="h-full">
+          <app-profile-view 
+            [user]="user"
+            (updateUser)="handleUpdateUser($event.id, $event)">
+          </app-profile-view>
+        </div>
+      </ng-container>
+
+    </div>
+
+  </main>
+
+</div>

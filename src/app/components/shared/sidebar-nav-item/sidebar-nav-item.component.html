@@ -1,0 +1,10 @@
+<button [class]="itemClasses">
+  <div [class]="'transition-transform duration-300 ' + iconClasses">
+    <ng-content select="[icon]"></ng-content>
+  </div>
+  @if (!collapsed) {
+    <span class="text-[11px] font-black uppercase tracking-widest animate-in font-bold">
+      {{ label }}
+    </span>
+  }
+</button>

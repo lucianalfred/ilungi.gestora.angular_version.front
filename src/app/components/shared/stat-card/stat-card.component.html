@@ -1,0 +1,9 @@
+<div class="bg-white dark:bg-slate-900 p-8 rounded-[3.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-8 group hover:shadow-xl transition-all">
+  <div [class]="'w-20 h-20 rounded-[2.2rem] flex items-center justify-center ' + bgColors[color] + ' group-hover:scale-110 transition-transform'">
+    <ng-content select="[icon]"></ng-content>
+  </div>
+  <div>
+    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">{{ label }}</p>
+    <p class="text-4xl font-black text-slate-900 dark:text-white tracking-tighter mt-1">{{ value }}</p>
+  </div>
+</div>

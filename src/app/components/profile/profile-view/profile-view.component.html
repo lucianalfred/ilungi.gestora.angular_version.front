@@ -1,0 +1,36 @@
+<!-- Edit button -->
+<button (click)="startEditing()" class="flex items-center gap-2">
+  <app-icon name="pencil" [size]="16"></app-icon>
+  Editar Perfil
+</button>
+
+<!-- Alert -->
+<div class="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+  <div class="flex items-start gap-3">
+    <app-icon name="alert-triangle" class="text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" [size]="18"></app-icon>
+    <p class="text-sm text-amber-800 dark:text-amber-300">
+      Por segurança, altere sua senha para continuar.
+    </p>
+  </div>
+</div>
+
+<!-- Avatar -->
+<button ...>
+  @if (getAvatarUrl(user)) {
+    <img [src]="getAvatarUrl(user)!" [alt]="user.name" />
+  } @else {
+    <app-icon name="user" [size]="40" class="text-slate-400"></app-icon>
+  }
+</button>
+
+<!-- Loading -->
+<app-icon name="loader-2" [size]="18" class="animate-spin"></app-icon>
+
+<!-- Password fields -->
+<div class="relative">
+  <input ... />
+  <app-icon name="lock" [size]="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></app-icon>
+</div>
+
+<!-- Error Message -->              
+

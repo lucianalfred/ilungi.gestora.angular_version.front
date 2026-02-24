@@ -1,0 +1,157 @@
+<div class="min-h-screen bg-slate-100 flex items-center justify-center p-4 sm:p-6 font-sans">
+  <div class="w-full max-w-md">
+    <!-- Header -->
+    <div class="text-center mb-8 sm:mb-10">
+      <div class="inline-flex p-3 sm:p-4 bg-emerald-500 rounded-2xl shadow-lg mb-4 sm:mb-6">
+        <app-icon name="workflow" [size]="28" class="sm:w-9 sm:h-9 text-white"></app-icon>
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mb-2">GESTORA</h1>
+      <p class="text-xs sm:text-sm text-slate-500 font-medium">Professional Workflow Management</p>
+    </div>
+
+    <!-- Login Form -->
+    <div class="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-lg border border-slate-200">
+      <h2 class="text-lg sm:text-xl font-bold text-slate-900 mb-2">Acesso ao Sistema</h2>
+      <p class="text-slate-500 text-xs sm:text-sm mb-6 sm:mb-8">
+        Entre com suas credenciais corporativas
+      </p>
+
+      <!-- Error Message -->
+      @if (errorMessage()) {
+        <div class="mb-6 p-3 bg-rose-50 border border-rose-200 rounded-lg">
+          <div class="flex items-start gap-2">
+            <app-icon name="alert-triangle" [size]="16" class="text-rose-500 mt-0.5 flex-shrink-0"></app-icon>
+            <p class="text-rose-700 text-sm">{{ errorMessage() }}</p>
+          </div>
+        </div>
+      }
+
+      <!-- Form -->
+      <form (ngSubmit)="onSubmit()" class="space-y-4 sm:space-y-6">
+        <!-- Email Input -->
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-slate-700">
+            Email Corporativo <span class="text-rose-500">*</span>
+          </label>
+          <div class="relative">
+            <input
+              type="email"
+              [ngModel]="email()"
+              (ngModelChange)="email.set($event)"
+              name="email"
+              placeholder="nome@empresa.com"
+              class="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-white border border-slate-300 focus:border-emerald-500 rounded-xl focus:ring-2 focus:ring-emerald-500/20 text-slate-900 outline-none transition-all text-sm"
+              [disabled]="authService.isLoading()"
+              required
+            />
+            <app-icon name="mail" [size]="18" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></app-icon>
+          </div>
+        </div>
+
+        <!-- Password Input -->
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-slate-700">
+            Senha <span class="text-rose-500">*</span>
+          </label>
+          <div class="relative">
+            <input
+              type="password"
+              [ngModel]="password()"
+              (ngModelChange)="password.set($event)"
+              name="password"
+              placeholder="Digite sua senha"
+              class="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-white border border-slate-300 focus:border-emerald-500 rounded-xl focus:ring-2 focus:ring-emerald-500/20 text-slate-900 outline-none transition-all text-sm"
+              [disabled]="authService.isLoading()"
+              required
+            />
+            <app-icon name="lock" [size]="18" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></app-icon>
+          </div>
+        </div>
+
+        <!-- Remember Me & Forgot Password -->
+        <div class="flex items-center justify-between">
+          <label class="flex items-center space-x-2 cursor-pointer">
+            <input 
+              type="checkbox" 
+              [checked]="rememberMe()"
+              (change)="onRememberMeChange()"
+              class="w-4 h-4 text-emerald-500 rounded border-slate-300 focus:ring-emerald-500/20"
+              [disabled]="authService.isLoading()"
+            />
+            <span class="text-sm text-slate-600">Lembrar-me</span>
+          </label>
+          <button 
+            type="button" 
+            (click)="showForgotPassword.set(true)"
+            class="text-sm text-emerald-600 hover:text-emerald-700 font-medium disabled:text-slate-400"
+            [disabled]="authService.isLoading()"
+          >
+            Esqueceu a senha?
+          </button>
+        </div>
+
+        <!-- Submit Button -->
+        <button
+          type="submit"
+          [disabled]="authService.isLoading()"
+          class="w-full py-3 sm:py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          @if (authService.isLoading()) {
+            <app-icon name="loader-2" [size]="18" class="animate-spin"></app-icon>
+            <span>Autenticando...</span>
+          } @else {
+            <span>Entrar no Sistema</span>
+          }
+        </button>
+      </form>
+
+      <!-- Register Link -->
+      <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-slate-100 text-center">
+        <p class="text-sm text-slate-500">Não tem uma conta?</p>
+        <button
+          (click)="showRegister.set(true)"
+          [disabled]="authService.isLoading()"
+          class="text-sm text-emerald-600 hover:text-emerald-700 font-medium disabled:text-slate-400 transition-colors flex items-center justify-center gap-2 mx-auto mt-2"
+        >
+          <app-icon name="user-plus" [size]="16"></app-icon>
+          Criar conta
+        </button>
+      </div>
+
+      <!-- Back to Landing -->
+      <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-slate-100 text-center">
+        <button
+          routerLink="/"
+          [disabled]="authService.isLoading()"
+          class="text-sm text-slate-500 hover:text-slate-700 disabled:text-slate-400 transition-colors flex items-center justify-center gap-2 mx-auto"
+        >
+          <app-icon name="chevron-left" [size]="16"></app-icon>
+          Voltar para o início
+        </button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-6 sm:mt-8 text-center">
+      <p class="text-xs text-slate-400">
+        © 2026 GESTORA • Sistema de Gestão de Tarefas
+      </p>
+      <p class="text-[10px] text-slate-400 mt-1">
+        Suporte: suporte&#64;gestora.com
+      </p>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  @if (showForgotPassword()) {
+    <app-forgot-password-modal
+      (close)="showForgotPassword.set(false)"
+    />
+  }
+
+  @if (showRegister()) {
+    <app-register-modal
+      (close)="showRegister.set(false)"
+    />
+  }
+</div>

@@ -1,0 +1,198 @@
+<div *ngIf="isOpen || editingTaskId" 
+     class="min-h-[calc(90vh-200px)] bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-100 dark:border-slate-800 shadow-2xl p-6">
+  
+  <button 
+    (click)="onClose.emit()" 
+    [disabled]="isLoading"
+    class="mb-4 text-slate-400 hover:text-rose-500 transition-colors flex items-center gap-2 text-sm font-bold disabled:opacity-50">
+    <app-icon name="x" [size]="18"></app-icon> Voltar
+  </button>
+  
+  <h2 class="text-lg sm:text-xl font-black tracking-tighter mb-4 uppercase text-slate-800 dark:text-white">
+    {{ editingTaskId ? 'Editar Tarefa' : 'Nova Actividade' }}
+  </h2>
+  
+  <!-- Mensagem de erro -->
+  <div *ngIf="taskFormError" class="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg">
+    <div class="flex items-start gap-2">
+      <app-icon name="alert-triangle" class="text-rose-500 mt-0.5 flex-shrink-0" [size]="16"></app-icon>
+      <p class="text-rose-700 text-sm">{{ taskFormError }}</p>
+    </div>
+  </div>
+  
+  <form #taskForm="ngForm" class="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3" (ngSubmit)="handleSubmit()">
+    
+    <!-- Título -->
+    <div class="md:col-span-2 lg:col-span-3 space-y-1">
+      <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-1">
+        Título <span class="text-rose-500">*</span>
+      </label>
+      <input 
+        [(ngModel)]="formData.title"
+        name="title"
+        required
+        [disabled]="isLoading"
+        class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 font-bold text-sm disabled:opacity-50" 
+        placeholder="Digite o título da tarefa"
+      />
+    </div>
+    
+    <!-- Descrição -->
+    <div class="md:col-span-2 lg:col-span-3 space-y-1">
+      <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-1">
+        Descrição <span class="text-rose-500">*</span>
+      </label>
+      <textarea 
+        [(ngModel)]="formData.description"
+        name="description"
+        rows="3" 
+        required
+        [disabled]="isLoading"
+        class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 font-medium resize-none text-sm disabled:opacity-50"
+        placeholder="Descreva a tarefa em detalhes"
+      ></textarea>
+    </div>
+    
+    <!-- Data Início -->
+    <div class="space-y-1">
+      <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-1">
+        Data Início <span class="text-rose-500">*</span>
+      </label>
+      <input 
+        [(ngModel)]="formData.startDate"
+        name="startDate"
+        type="datetime-local" 
+        (ngModelChange)="recalcDelivery()"
+        required
+        [disabled]="isLoading"
+        class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 font-bold text-sm disabled:opacity-50"
+      />
+    </div>
+    
+    <!-- Duração -->
+    <div class="space-y-1">
+      <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-1">
+        Duração <span class="text-rose-500">*</span>
+      </label>
+      <div class="flex gap-2">
+        <input 
+          [(ngModel)]="formData.deadlineValue"
+          name="deadlineValue"
+          type="number" 
+          min="1"
+          (ngModelChange)="recalcDelivery()"
+          required
+          [disabled]="isLoading"
+          class="flex-1 px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 font-bold text-sm disabled:opacity-50"
+        />
+        <select 
+          [(ngModel)]="formData.deadlineType"
+          name="deadlineType"
+          (ngModelChange)="recalcDelivery()"
+          [disabled]="isLoading"
+          class="px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 font-bold text-sm disabled:opacity-50"
+        >
+          <option value="days">Dias</option>
+          <option value="hours">Horas</option>
+        </select>
+      </div>
+    </div>
+    
+    <!-- Data Entrega (calculada) -->
+    <div class="md:col-span-2 lg:col-span-3 space-y-1">
+      <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-1">
+        Data Entrega (calculada)
+      </label>
+      <div class="px-3 py-2.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+        {{ taskFormDeliveryPreview || (editTask ? (editTask.deliveryDate | date:'dd/MM/yyyy HH:mm') : '—') }}
+      </div>
+    </div>
+    
+    <!-- Responsáveis -->
+    <div class="md:col-span-2 lg:col-span-3 space-y-1">
+      <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-1">
+        Responsáveis (múltipla escolha) <span class="text-rose-500">*</span>
+      </label>
+      
+      <div *ngIf="hasUsers" class="flex gap-2 mb-2">
+        <input
+          [(ngModel)]="responsibleSearch"
+          name="responsibleSearch"
+          [disabled]="isLoading"
+          placeholder="Pesquisar por nome ou email..."
+          class="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 font-bold text-sm disabled:opacity-50"
+        />
+        <button
+          type="button"
+          (click)="handleSelectAllResponsibles()"
+          [disabled]="isLoading"
+          class="px-3 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold uppercase rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors whitespace-nowrap disabled:opacity-50"
+        >
+          Selecionar Todos
+        </button>
+      </div>
+      
+      <div *ngIf="!hasUsers" class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-center">
+        <p class="text-amber-700 dark:text-amber-400 text-sm font-bold">
+          ⚠️ Nenhum utilizador encontrado
+        </p>
+        <p class="text-amber-600 dark:text-amber-500 text-xs mt-1">
+          É necessário ter pelo menos um utilizador cadastrado para criar tarefas.
+        </p>
+      </div>
+      
+      <!-- CORRIGIDO: Tag label fechada corretamente -->
+      <div *ngIf="hasUsers" class="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg max-h-48 overflow-y-auto">
+        <div *ngFor="let user of filteredUsers">
+          <label class="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 transition-colors cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                 [class.opacity-50]="isLoading">
+            <input 
+              type="checkbox"
+              [checked]="isResponsibleChecked(user.id)"
+              (change)="handleResponsibleChange(user.id, $any($event.target).checked)"
+              [disabled]="isLoading"
+              class="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500/20"
+            />
+            <div class="flex-1 min-w-0">
+              <p class="font-bold text-slate-900 dark:text-white text-xs truncate">
+                {{ user.name }}
+              </p>
+              <p class="text-[9px] text-slate-500 dark:text-slate-400 truncate">
+                {{ user.email }}
+              </p>
+            </div>
+            <span *ngIf="user.role === 'ADMIN'" 
+                  class="text-[8px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+              Admin
+            </span>
+          </label>
+        </div>
+      </div>
+      
+      <p *ngIf="hasUsers" class="text-[9px] text-slate-400 mt-1">
+        Selecionados: {{ selectedCount }} utilizador(es)
+      </p>
+    </div>
+    
+    <!-- Botões -->
+    <div class="md:col-span-2 lg:col-span-3 pt-4 mt-2 border-t border-slate-100 dark:border-slate-800">
+      <div class="flex gap-3">
+        <button 
+          type="submit"
+          [disabled]="!hasUsers || isLoading || !taskForm.form.valid"
+          class="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 text-sm uppercase tracking-wider text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
+          <span *ngIf="isLoading" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+          {{ isLoading ? (editingTaskId ? 'A guardar...' : 'A criar...') : (editingTaskId ? 'Guardar Alterações' : 'Criar Tarefa') }}
+        </button>
+        
+        <button 
+          type="button"
+          (click)="onClose.emit()"
+          [disabled]="isLoading"
+          class="px-6 py-3 rounded-xl bg-transparent border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-sm uppercase tracking-wider transition-colors disabled:opacity-50">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </form>
+</div>

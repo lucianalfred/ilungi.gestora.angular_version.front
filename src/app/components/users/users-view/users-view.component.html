@@ -1,0 +1,147 @@
+<div class="max-w-7xl mx-auto space-y-6 sm:space-y-10 animate-in">
+  
+  <!-- Loading State -->
+  @if (isLoading) {
+    <div class="flex items-center justify-center min-h-[400px]">
+      <app-loading-spinner [size]="'lg'" [text]="'Carregando utilizadores...'"></app-loading-spinner>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error) {
+    <div class="bg-red-50 dark:bg-red-900/20 rounded-2xl p-8 text-center">
+      <p class="text-red-600 dark:text-red-400">
+        Erro ao carregar utilizadores: {{ error.message }}
+      </p>
+      <button (click)="reloadPage()" class="mt-4 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors">
+        Tentar novamente
+      </button>
+    </div>
+  }
+
+  <!-- Modals -->
+  @if (isAddUserOpen()) {
+    @if (currentUser) {  <!-- ✅ Verificação extra -->
+      <app-user-modal
+        [isOpen]="true"
+        [users]="users"
+        [currentUser]="currentUser"
+        [isSubmitting]="isUpdatePending()"
+        (onClose)="handleCloseAdd()"
+        (onSuccess)="handleCreateUser($event)"
+      />
+    }
+  }
+
+  @if (editingUserId()) {
+    @if (currentUser) {  <!-- ✅ Verificação extra -->
+      <app-user-modal
+        [isOpen]="true"
+        [editingUserId]="editingUserId()"
+        [users]="users"
+        [currentUser]="currentUser"
+        [isSubmitting]="isUpdatePending()"
+        (onClose)="handleCloseEdit()"
+        (onSuccess)="handleUpdateUser(editingUserId()!, $event)"
+      />
+    }
+  }
+
+  <!-- Main Content -->
+  @if (!isAddUserOpen() && !editingUserId() && !isLoading && !error) {
+    <!-- Header com estatísticas -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div>
+        <h3 class="text-lg font-black text-slate-900 dark:text-white">
+          Gestão de Utilizadores
+        </h3>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Total: {{ stats.total }} utilizadores ({{ stats.admins }} admin, {{ stats.employees }} funcionários)
+        </p>
+      </div>
+      <app-button 
+        (onClick)="isAddUserOpen.set(true)" 
+        class="px-6 py-3"
+        [disabled]="isUpdatePending()"
+      >
+        <app-icon name="plus" [size]="18" class="mr-2"></app-icon> Adicionar Utilizador
+      </app-button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 shadow-sm">
+      <div class="flex flex-col lg:flex-row gap-4">
+        <!-- Search -->
+        <div class="relative flex-1">
+          <input 
+            placeholder="Pesquisar por nome, email ou cargo..." 
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event)"
+            (input)="onSearchChange($event)"
+            class="w-full pl-10 pr-12 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-sm"
+          />
+          <app-icon name="search" [size]="18" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></app-icon>
+          @if (isFetching) {
+            <div class="absolute right-3 top-1/2 -translate-y-1/2">
+              <app-icon name="loader-2" [size]="18" class="animate-spin text-emerald-500"></app-icon>
+            </div>
+          }
+        </div>
+        
+        <!-- Role Filter -->
+        <div class="relative min-w-[200px]">
+          <select 
+            [ngModel]="roleFilter()"
+            (ngModelChange)="roleFilter.set($event)"
+            (change)="onRoleFilterChange($event)"
+            class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 appearance-none cursor-pointer font-medium text-sm"
+          >
+            <option value="all">Todos os perfis</option>
+            <option [value]="UserRole.ADMIN">Administradores</option>
+            <option [value]="UserRole.USER">Funcionários</option>
+          </select>
+          <app-icon name="chevron-down" [size]="18" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></app-icon>
+        </div>
+      </div>
+    </div>
+
+    <!-- Users Grid -->
+    <app-loading-overlay [isLoading]="isFetching">
+      @if (sortedUsers.length > 0) {
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          @for (user of sortedUsers; track user.id) {
+            @if (currentUser) {  <!-- ✅ Verificação extra -->
+              <app-user-card
+                [user]="user"
+                [currentUser]="currentUser"
+                [isDeleting]="isDeletePending()"
+                (onEdit)="handleEditUser(user.id)"
+                (onDelete)="handleDeleteUser(user.id)"
+                (onAvatarUpload)="avatarUpload.emit(user.id)"
+              />
+            }
+          }
+        </div>
+      } @else {
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-12 text-center border border-slate-100 dark:border-slate-800">
+          <div class="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+            <app-icon name="users" [size]="32" class="text-slate-400"></app-icon>
+          </div>
+          <h4 class="text-lg font-bold text-slate-900 dark:text-white mb-2">
+            Nenhum utilizador encontrado
+          </h4>
+          <p class="text-slate-500 dark:text-slate-400 mb-6">
+            {{ searchQuery() || roleFilter() !== 'all' 
+              ? 'Tente ajustar os filtros de pesquisa.'
+              : 'Clique no botão "Adicionar Utilizador" para começar.' }}
+          </p>
+          @if (!searchQuery() && roleFilter() === 'all') {
+            <app-button (onClick)="isAddUserOpen.set(true)">
+              <app-icon name="plus" [size]="18"></app-icon> Adicionar Utilizador
+            </app-button>
+          }
+        </div>
+      }
+    </app-loading-overlay>
+  }
+</div>
