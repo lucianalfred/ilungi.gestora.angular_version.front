@@ -1,54 +1,48 @@
 <div class="max-w-7xl mx-auto space-y-6 sm:space-y-10 animate-in">
   
   <!-- Loading State -->
-  @if (isLoading) {
-    <div class="flex items-center justify-center min-h-[400px]">
-      <app-loading-spinner [size]="'lg'" [text]="'Carregando utilizadores...'"></app-loading-spinner>
-    </div>
-  }
+  <div *ngIf="isLoading" class="flex items-center justify-center min-h-[400px]">
+    <app-loading-spinner [size]="'lg'" [text]="'Carregando utilizadores...'"></app-loading-spinner>
+  </div>
 
   <!-- Error State -->
-  @if (error) {
-    <div class="bg-red-50 dark:bg-red-900/20 rounded-2xl p-8 text-center">
-      <p class="text-red-600 dark:text-red-400">
-        Erro ao carregar utilizadores: {{ error.message }}
-      </p>
-      <button (click)="reloadPage()" class="mt-4 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors">
-        Tentar novamente
-      </button>
-    </div>
-  }
+  <div *ngIf="error" class="bg-red-50 dark:bg-red-900/20 rounded-2xl p-8 text-center">
+    <p class="text-red-600 dark:text-red-400">
+      Erro ao carregar utilizadores: {{ error.message }}
+    </p>
+    <button (click)="reloadPage()" class="mt-4 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors">
+      Tentar novamente
+    </button>
+  </div>
 
   <!-- Modals -->
-  @if (isAddUserOpen()) {
-    @if (currentUser) {  <!-- ✅ Verificação extra -->
-      <app-user-modal
-        [isOpen]="true"
-        [users]="users"
-        [currentUser]="currentUser"
-        [isSubmitting]="isUpdatePending()"
-        (onClose)="handleCloseAdd()"
-        (onSuccess)="handleCreateUser($event)"
-      />
-    }
-  }
+  <ng-container *ngIf="showUserForm && currentUser">
+    <!-- Add User Modal -->
+    <app-user-modal
+      *ngIf="isAddUserOpen()"
+      [isOpen]="true"
+      [users]="users"
+      [currentUser]="currentUser"
+      [isSubmitting]="isUpdatePending()"
+      (onClose)="handleCloseAdd()"
+      (onSuccess)="handleCreateUser($event)"
+    />
 
-  @if (editingUserId()) {
-    @if (currentUser) {  <!-- ✅ Verificação extra -->
-      <app-user-modal
-        [isOpen]="true"
-        [editingUserId]="editingUserId()"
-        [users]="users"
-        [currentUser]="currentUser"
-        [isSubmitting]="isUpdatePending()"
-        (onClose)="handleCloseEdit()"
-        (onSuccess)="handleUpdateUser(editingUserId()!, $event)"
-      />
-    }
-  }
+    <!-- Edit User Modal -->
+    <app-user-modal
+      *ngIf="editingUserId()"
+      [isOpen]="true"
+      [editingUserId]="editingUserId()"
+      [users]="users"
+      [currentUser]="currentUser"
+      [isSubmitting]="isUpdatePending()"
+      (onClose)="handleCloseEdit()"
+      (onSuccess)="handleUpdateUser(editingUserId()!, $event)"
+    />
+  </ng-container>
 
   <!-- Main Content -->
-  @if (!isAddUserOpen() && !editingUserId() && !isLoading && !error) {
+  <div *ngIf="!showUserForm && !isLoading && !error">
     <!-- Header com estatísticas -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
@@ -59,13 +53,14 @@
           Total: {{ stats.total }} utilizadores ({{ stats.admins }} admin, {{ stats.employees }} funcionários)
         </p>
       </div>
-      <app-button 
-        (onClick)="isAddUserOpen.set(true)" 
-        class="px-6 py-3"
+      <button 
+        (click)="isAddUserOpen.set(true)" 
+        class="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-colors flex items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50"
         [disabled]="isUpdatePending()"
       >
-        <app-icon name="plus" [size]="18" class="mr-2"></app-icon> Adicionar Utilizador
-      </app-button>
+        <app-icon name="plus" [size]="18"></app-icon>
+        Adicionar Utilizador
+      </button>
     </div>
 
     <!-- Filtros -->
@@ -81,11 +76,9 @@
             class="w-full pl-10 pr-12 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-sm"
           />
           <app-icon name="search" [size]="18" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></app-icon>
-          @if (isFetching) {
-            <div class="absolute right-3 top-1/2 -translate-y-1/2">
-              <app-icon name="loader-2" [size]="18" class="animate-spin text-emerald-500"></app-icon>
-            </div>
-          }
+          <div *ngIf="isFetching" class="absolute right-3 top-1/2 -translate-y-1/2">
+            <app-icon name="loader-2" [size]="18" class="animate-spin text-emerald-500"></app-icon>
+          </div>
         </div>
         
         <!-- Role Filter -->
@@ -107,22 +100,22 @@
 
     <!-- Users Grid -->
     <app-loading-overlay [isLoading]="isFetching">
-      @if (sortedUsers.length > 0) {
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          @for (user of sortedUsers; track user.id) {
-            @if (currentUser) {  <!-- ✅ Verificação extra -->
-              <app-user-card
-                [user]="user"
-                [currentUser]="currentUser"
-                [isDeleting]="isDeletePending()"
-                (onEdit)="handleEditUser(user.id)"
-                (onDelete)="handleDeleteUser(user.id)"
-                (onAvatarUpload)="avatarUpload.emit(user.id)"
-              />
-            }
-          }
-        </div>
-      } @else {
+      <!-- CORRIGIDO: else noUsers (sem "Template") -->
+      <div *ngIf="sortedUsers().length > 0; else noUsers" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <app-user-card
+          *ngFor="let user of sortedUsers(); trackBy: trackByUserId"
+          [user]="user"
+          [currentUser]="currentUser"
+          [isDeleting]="isDeletePending()"
+          [getAvatarUrl]="getAvatarUrl"
+          (onEdit)="handleEditUser(user.id)"
+          (onDelete)="handleDeleteUser(user.id)"
+          (onAvatarUpload)="avatarUpload.emit(user.id)"
+        />
+      </div>
+
+      <!-- Template vazio - CORRIGIDO: #noUsers -->
+      <ng-template #noUsers>
         <div class="bg-white dark:bg-slate-900 rounded-2xl p-12 text-center border border-slate-100 dark:border-slate-800">
           <div class="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
             <app-icon name="users" [size]="32" class="text-slate-400"></app-icon>
@@ -135,13 +128,14 @@
               ? 'Tente ajustar os filtros de pesquisa.'
               : 'Clique no botão "Adicionar Utilizador" para começar.' }}
           </p>
-          @if (!searchQuery() && roleFilter() === 'all') {
-            <app-button (onClick)="isAddUserOpen.set(true)">
-              <app-icon name="plus" [size]="18"></app-icon> Adicionar Utilizador
-            </app-button>
-          }
+          <button *ngIf="!searchQuery() && roleFilter() === 'all'"
+                  (click)="isAddUserOpen.set(true)"
+                  class="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-colors flex items-center gap-2 mx-auto">
+            <app-icon name="plus" [size]="18"></app-icon>
+            Adicionar Utilizador
+          </button>
         </div>
-      }
+      </ng-template>
     </app-loading-overlay>
-  }
+  </div>
 </div>

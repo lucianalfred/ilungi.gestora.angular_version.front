@@ -1,8 +1,8 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IconComponent } from '../../shared/icon/icon.component';
-import { Task, TaskStatus, User, UserRole } from '../../../models/types';
+import { Task, TaskStatus, User, UserRole, Comment } from '../../../models/types';
 import { STATUS_COLORS, StatusOrder } from '../../../constants';
 
 @Component({
@@ -18,7 +18,7 @@ export class TaskCardComponent {
   @Input() users: User[] = [];
   @Input() isDeleting = false;
   @Input() isUpdating = false;
-  @Input() onEdit: (() => void) | null = null; // Função callback para editar
+  @Input() onEdit: (() => void) | null = null;
 
   @Output() onAdvance = new EventEmitter<void>();
   @Output() onRegress = new EventEmitter<void>();
@@ -28,6 +28,19 @@ export class TaskCardComponent {
   commentText = '';
   showAllComments = false;
   isLoading = false;
+  showComments = signal(false);
+  ngOnInit() {
+  console.log('🎯 TaskCard criado/atualizado:', {
+    id: this.task.id,
+    title: this.task.title,
+    description: this.task.description,
+    status: this.task.status,
+    responsibleId: this.task.responsibleId,
+    startDate: this.task.startDate,
+    dueDate: this.task.dueDate,
+    comments: this.task.comments?.length
+  });
+}
 
   // Mapeamento de aliases de status
   private statusAliasMap: Record<string, TaskStatus> = {
@@ -48,6 +61,10 @@ export class TaskCardComponent {
     'ARQUIVADA': TaskStatus.FECHADO,
     'CANCELADA': TaskStatus.FECHADO
   };
+
+  // ============================================
+  // GETTERS
+  // ============================================
 
   get mappedStatus(): TaskStatus {
     if (Object.values(TaskStatus).includes(this.task.status as TaskStatus)) {
@@ -101,8 +118,8 @@ export class TaskCardComponent {
     return this.users?.find(u => u.id === this.task.responsibleId);
   }
 
-  get respName(): string | undefined {
-    return this.responsibleUser?.name;
+  get respName(): string {
+    return this.responsibleUser?.name || 'Não atribuído';
   }
 
   get extra(): string {
@@ -145,41 +162,45 @@ export class TaskCardComponent {
     return TaskStatus;
   }
 
-  async handleAdvance(): Promise<void> {
-    if (!this.finalCanAdvance || this.isLoading_) return;
-    
-    this.isLoading = true;
-    try {
-      this.onAdvance.emit();
-    } catch (error) {
-      console.error('Erro ao avançar tarefa:', error);
-    } finally {
-      this.isLoading = false;
-    }
+  // ============================================
+  // MÉTODOS PÚBLICOS (FALTANTES)
+  // ============================================
+
+  // ✅ Método para obter label do status
+  getStatusLabel(status: TaskStatus): string {
+    const labels: Record<TaskStatus, string> = {
+      [TaskStatus.PENDENTE]: 'Pendente',
+      [TaskStatus.EM_PROGRESSO]: 'Em Progresso',
+      [TaskStatus.ATRASADA]: 'Atrasada',
+      [TaskStatus.TERMINADO]: 'Terminado',
+      [TaskStatus.FECHADO]: 'Fechado'
+    };
+    return labels[status] || status;
   }
 
-  async handleRegress(): Promise<void> {
-    if (!this.finalCanRegress || this.isLoading_) return;
-    
+  // ✅ Método para obter nome do usuário por ID
+  getUserName(userId: string): string {
+    const user = this.users.find(u => u.id === userId);
+    return user ? user.name : 'Usuário desconhecido';
+  }
+
+  // ✅ Handlers
+  handleAdvance(): void {
+    if (!this.finalCanAdvance || this.isLoading_) return;
     this.isLoading = true;
-    try {
-      this.onRegress.emit();
-    } catch (error) {
-      console.error('Erro ao recuar tarefa:', error);
-    } finally {
-      this.isLoading = false;
-    }
+    this.onAdvance.emit();
+    setTimeout(() => this.isLoading = false, 500);
+  }
+
+  handleRegress(): void {
+    if (!this.finalCanRegress || this.isLoading_) return;
+    this.isLoading = true;
+    this.onRegress.emit();
+    setTimeout(() => this.isLoading = false, 500);
   }
 
   handleDelete(): void {
     this.onDelete.emit();
-  }
-
-  handleAddComment(): void {
-    if (!this.commentText.trim() || this.isLoading_) return;
-    
-    this.onAddComment.emit(this.commentText.trim());
-    this.commentText = '';
   }
 
   handleEdit(): void {
@@ -188,11 +209,26 @@ export class TaskCardComponent {
     }
   }
 
+  handleAddComment(): void {
+    if (!this.commentText.trim() || this.isLoading_) return;
+    this.onAddComment.emit(this.commentText.trim());
+    this.commentText = '';
+  }
+
+  toggleComments(): void {
+    this.showComments.update(prev => !prev);
+  }
+
   toggleShowAllComments(): void {
     this.showAllComments = !this.showAllComments;
   }
 
-  formatDate(date: string): string {
+  // ============================================
+  // MÉTODOS AUXILIARES
+  // ============================================
+
+  formatDate(date: string | Date | undefined): string {
+    if (!date) return 'Sem data';
     return new Date(date).toLocaleDateString('pt-PT', {
       day: '2-digit',
       month: '2-digit',
@@ -200,7 +236,8 @@ export class TaskCardComponent {
     });
   }
 
-  formatDateTime(date: string): string {
+  formatDateTime(date: string | Date | undefined): string {
+    if (!date) return '';
     return new Date(date).toLocaleString('pt-PT', {
       day: '2-digit',
       month: '2-digit',
@@ -208,5 +245,38 @@ export class TaskCardComponent {
       hour: '2-digit',
       minute: '2-digit'
     });
+  }
+
+  isOverdue(): boolean {
+    if (!this.task.dueDate || this.isClosed) return false;
+    return new Date(this.task.dueDate) < new Date();
+  }
+
+  getPriorityColor(): string {
+    switch (this.task.priority) {
+      case 'ALTA':
+      case 'URGENTE':
+        return 'text-rose-600 bg-rose-50 dark:bg-rose-900/20';
+      case 'MEDIA':
+        return 'text-amber-600 bg-amber-50 dark:bg-amber-900/20';
+      case 'BAIXA':
+        return 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20';
+      default:
+        return 'text-slate-600 bg-slate-50 dark:bg-slate-800';
+    }
+  }
+
+  getPriorityLabel(): string {
+    switch (this.task.priority) {
+      case 'URGENTE': return 'Urgente';
+      case 'ALTA': return 'Alta';
+      case 'MEDIA': return 'Média';
+      case 'BAIXA': return 'Baixa';
+      default: return 'Normal';
+    }
+  }
+
+  getRecentComments(): Comment[] {
+    return this.task.comments?.slice(0, 3) || [];
   }
 }

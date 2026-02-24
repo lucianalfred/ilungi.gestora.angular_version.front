@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IconComponent } from '../../shared/icon/icon.component';
@@ -7,6 +7,7 @@ import { TaskCardComponent } from '../task-card/task-card.component';
 import { TaskModalComponent } from '../task-modal/task-modal.component';
 import { Task, User, TaskStatus, UserRole } from '../../../models/types';
 import { LanguageService } from '../../../services/language.service';
+import { TasksService } from '../../../services/tasks.service';
 
 @Component({
   selector: 'app-tasks-view',
@@ -20,10 +21,10 @@ import { LanguageService } from '../../../services/language.service';
     TaskModalComponent
   ],
   templateUrl: './tasks-view.component.html',
-  styleUrls: ['./tasks-view.component.css']
+  styleUrls: ['./tasks-view.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TasksViewComponent {
-  @Input() tasks: Task[] = [];
   @Input() users: User[] = [];
   @Input() user!: User;
   @Input() searchQuery: string = '';
@@ -36,11 +37,15 @@ export class TasksViewComponent {
   @Output() regressStatus = new EventEmitter<Task>();
   @Output() deleteTask = new EventEmitter<Task>();
   @Output() addComment = new EventEmitter<{ taskId: string; text: string }>();
+  @Output() createTask = new EventEmitter<void>();
 
   isTaskModalOpen = false;
   editingTaskId: string | null = null;
 
-  constructor(private languageService: LanguageService) {}
+  constructor(
+    private languageService: LanguageService,
+    public tasksService: TasksService
+  ) {}
 
   get t() {
     return this.languageService.translations() || {};
@@ -65,23 +70,14 @@ export class TasksViewComponent {
     }));
   }
 
-  // ADICIONADO: Propriedade computada para tarefas filtradas
-  get filteredTasks(): Task[] {
-    return this.tasks.filter(task => {
-      // Filtro por status
-      if (this.statusFilter !== 'all' && task.status !== this.statusFilter) {
-        return false;
-      }
+  // Usa o filteredTasks do serviço
+  get filteredTasks() {
+    return this.tasksService.filteredTasks();
+  }
 
-      // Filtro por busca (título ou descrição)
-      if (this.searchQuery && this.searchQuery.trim() !== '') {
-        const query = this.searchQuery.toLowerCase().trim();
-        return task.title.toLowerCase().includes(query) || 
-               (task.description?.toLowerCase().includes(query) || false);
-      }
-
-      return true;
-    });
+  // TrackBy para performance
+  trackByTaskId(index: number, task: Task): string {
+    return task.id;
   }
 
   // Método para obter handler de edição
@@ -95,6 +91,7 @@ export class TasksViewComponent {
   openCreateTaskModal(): void {
     this.editingTaskId = null;
     this.isTaskModalOpen = true;
+    this.createTask.emit();
   }
 
   openEditTaskModal(taskId: string): void {

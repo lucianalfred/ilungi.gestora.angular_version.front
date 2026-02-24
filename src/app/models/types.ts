@@ -145,13 +145,23 @@ export interface Notification {
 
 export interface Activity {
   id: string;
-  type: 'task_created' | 'task_updated' | 'task_deleted' | 'status_changed' | 'comment_added' | 'user_added' | 'user_updated' | 'user_deleted';
+  type:
+    | 'task_created'
+    | 'task_updated'
+    | 'task_deleted'
+    | 'status_changed'
+    | 'comment_added'
+    | 'user_added'
+    | 'user_updated'
+    | 'user_deleted'
+    | 'password_changed'; 
+
   userId: string;
   userName: string;
   taskId?: string;
   taskTitle?: string;
-  fromStatus?: string; // ADICIONADO
-  toStatus?: string;   // ADICIONADO
+  fromStatus?: string;
+  toStatus?: string;
   description: string;
   metadata?: Record<string, any>;
   timestamp: string;

@@ -110,7 +110,9 @@ export class AppPageComponent implements OnInit, OnDestroy {
   }
 
   get users() {
-    return this.usersService.users();
+    const usersList = this.usersService.users();
+    console.log('👥 [AppPage] users() retornou:', usersList?.length || 0, usersList); 
+     return usersList || [];
   }
 
   // ⚠️ Getter — NÃO é função
@@ -149,6 +151,10 @@ export class AppPageComponent implements OnInit, OnDestroy {
     }
   }
 
+   // No AppPageComponent
+   handleSetActiveTabSafe(tab: string): void {
+     this.setActiveTabSafe(tab as TabType);
+   }
   // ================================
   // Avatar
   // ================================
@@ -289,6 +295,35 @@ export class AppPageComponent implements OnInit, OnDestroy {
 
   handleDeleteUser(userId: string): void {
     this.usersService.deleteUser(userId);
+  }
+// app-page.component.ts
+async handleCreateTask(taskData: any): Promise<void> {
+  try {
+    const newTask = await this.tasksService.createTask(taskData);
+    console.log('✅ Tarefa criada no AppPage:', newTask);
+    
+   
+    //this.closeTaskModal();
+    
+    this.addNotification(
+      this.user!.id,
+      'Tarefa criada com sucesso!',
+      'success'
+    );
+  } catch (error) {
+    console.error('Erro ao criar tarefa:', error);
+    this.addNotification(
+      this.user!.id,
+      'Erro ao criar tarefa.',
+      'error'
+    );
+  }
+}
+  // ================================
+  // NOVO MÉTODO PARA CRIAR USUÁRIO
+  // ================================
+  handleCreateUser(userData: any): void {
+    this.usersService.createUser(userData);
   }
 
   // ================================

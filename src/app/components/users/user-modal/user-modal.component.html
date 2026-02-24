@@ -1,79 +1,175 @@
-<app-modal 
-  [isOpen]="isOpen" 
-  (onClose)="handleClose()"
-  [title]="editingUserId ? 'Editar Utilizador' : 'Adicionar Utilizador'"
->
-  <form (ngSubmit)="handleSubmit()" class="space-y-4">
-    <!-- Name Input -->
-    <app-input
-      label="Nome"
-      [ngModel]="name()"
-      (ngModelChange)="name.set($event)"
-      name="name"
-      [required]="true"
-      [error]="errors['name']"
-      [disabled]="isSubmitting"
-    />
-
-    <!-- Email Input -->
-    <app-input
-      label="Email"
-      type="email"
-      [ngModel]="email()"
-      (ngModelChange)="email.set($event)"
-      name="email"
-      [required]="true"
-      [error]="errors['email']"
-      [disabled]="isSubmitting || !!editingUserId"
-    />
-
-    <!-- Phone Input -->
-    <app-input
-      label="Telefone"
-      [ngModel]="phone()"
-      (ngModelChange)="phone.set($event)"
-      name="phone"
-      [disabled]="isSubmitting"
-    />
-
-    <!-- Role Select -->
-    <div class="space-y-1">
-      <label class="text-sm font-medium text-slate-700 dark:text-slate-300">
-        Perfil
-      </label>
-      <select
-        [ngModel]="role()"
-        (ngModelChange)="role.set($event)"
-        name="role"
-        class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-        [disabled]="isSubmitting"
-      >
-        <option [value]="UserRole.USER">Funcionário</option>
-        <option [value]="UserRole.ADMIN">Administrador</option>
-      </select>
-    </div>
-
-    <!-- Action Buttons -->
-    <div class="flex gap-3 pt-4">
-      <button
-        type="submit"
-        [disabled]="isSubmitting"
-        class="flex-1 px-8 py-4 rounded-2xl font-bold text-[14px] transition-all flex items-center justify-center gap-3 disabled:opacity-50 bg-[#10b981] hover:bg-[#059669] text-white shadow-xl shadow-emerald-500/20"
-      >
-        @if (isSubmitting) {
-          <app-loading-spinner size="sm" text="Salvando..." />
-        } @else {
-          {{ editingUserId ? 'Atualizar' : 'Criar Utilizador' }}
-        }
-      </button>
-      <button
-        type="button"
+<div *ngIf="isOpen" 
+     class="min-h-[calc(90vh-200px)] bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl py-4 px-2 sm:px-3">
+  <div class="w-full max-w-4xl mx-auto">
+    
+    <!-- Header com VOLTAR e NOVO UTILIZADOR -->
+    <div class="flex items-center justify-between mb-6">
+      <button 
         (click)="handleClose()"
+        class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors flex items-center gap-2 text-sm font-bold uppercase tracking-wider"
         [disabled]="isSubmitting"
-        class="px-6 py-4 rounded-2xl font-bold text-[14px] transition-all flex items-center justify-center gap-3 disabled:opacity-50 bg-transparent text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
       >
-        Cancelar
+        <app-icon name="x" [size]="18"></app-icon> VOLTAR
       </button>
+      <h1 class="text-lg sm:text-xl font-black tracking-tighter text-slate-900 dark:text-white uppercase">
+        {{ isEditing ? 'EDITAR UTILIZADOR' : 'NOVO UTILIZADOR' }}
+      </h1>
     </div>
-  </form>
-</app-modal>
+
+    <!-- Error Message -->
+    <div *ngIf="error()" class="mb-6 p-3 bg-rose-50 border border-rose-200 rounded-lg">
+      <div class="flex items-start gap-2">
+        <app-icon name="alert-triangle" class="text-rose-500 mt-0.5 flex-shrink-0" [size]="16"></app-icon>
+        <p class="text-rose-700 text-sm">{{ error() }}</p>
+      </div>
+    </div>
+
+    <!-- Form -->
+    <form (ngSubmit)="handleSubmit()" class="w-full">
+      <div class="space-y-4">
+        
+        <!-- NOME COMPLETO -->
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider mb-1">
+            NOME COMPLETO
+          </label>
+          <input
+            type="text"
+            [(ngModel)]="name"
+            name="name"
+            placeholder="Digite o nome completo"
+            class="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 outline-none font-bold text-sm rounded-lg"
+            [disabled]="isSubmitting"
+            required
+            autofocus
+          />
+        </div>
+
+        <!-- EMAIL -->
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider mb-1">
+            EMAIL
+          </label>
+          <input
+            type="email"
+            [(ngModel)]="email"
+            name="email"
+            placeholder="email@empresa.com"
+            class="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 outline-none font-bold text-sm rounded-lg"
+            [class.opacity-75]="isEditing"
+            [class.cursor-not-allowed]="isEditing"
+            [disabled]="isSubmitting || isEditing"
+            required
+          />
+          <p *ngIf="isEditing" class="text-xs text-amber-600 dark:text-amber-400 mt-1">
+            ⚠️ O email não pode ser alterado.
+          </p>
+        </div>
+
+        <!-- TELEFONE -->
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider mb-1">
+            TELEFONE
+          </label>
+          <input
+            type="tel"
+            [(ngModel)]="phone"
+            name="phone"
+            placeholder="+244 999 999 999"
+            class="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 outline-none font-bold text-sm rounded-lg"
+            [disabled]="isSubmitting"
+          />
+        </div>
+
+        <!-- CARGO / POSIÇÃO -->
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider mb-1">
+            CARGO / POSIÇÃO
+          </label>
+          <input
+            type="text"
+            [(ngModel)]="position"
+            name="position"
+            placeholder="Desenvolvedor Senior"
+            class="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 outline-none font-bold text-sm rounded-lg"
+            [disabled]="isSubmitting"
+          />
+        </div>
+
+        <!-- DEPARTAMENTO -->
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider mb-1">
+            DEPARTAMENTO
+          </label>
+          <input
+            type="text"
+            [(ngModel)]="department"
+            name="department"
+            placeholder="Tecnologia"
+            class="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 outline-none font-bold text-sm rounded-lg"
+            [disabled]="isSubmitting"
+          />
+        </div>
+
+        <!-- PERFIL DE ACESSO -->
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider mb-1">
+            PERFIL DE ACESSO
+          </label>
+          <select
+            [(ngModel)]="role"
+            name="role"
+            class="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 outline-none font-bold text-sm rounded-lg"
+            [class.opacity-75]="isSelf"
+            [class.cursor-not-allowed]="isSelf"
+            [disabled]="isSubmitting || isSelf"
+          >
+            <option [value]="UserRole.USER">Funcionário</option>
+            <option [value]="UserRole.ADMIN">Administrador</option>
+          </select>
+          <p *ngIf="isSelf" class="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+            <app-icon name="alert-triangle" [size]="12"></app-icon>
+            Não pode alterar seu próprio perfil.
+          </p>
+        </div>
+
+        <!-- Info para novo usuário -->
+        <div *ngIf="!isEditing" class="p-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
+          <p class="text-xs text-slate-600 dark:text-slate-400">
+            <span class="font-bold">NOTA:</span> Uma senha temporária será gerada automaticamente e enviada por email.
+          </p>
+        </div>
+
+        <!-- Info para edição -->
+        <div *ngIf="isEditing && !isSelf" class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p class="text-xs text-blue-700 flex items-center gap-2">
+            <app-icon name="briefcase" [size]="14"></app-icon>
+            A editar utilizador: <span class="font-bold">{{ editingUser?.name }}</span>
+          </p>
+        </div>
+
+        <!-- Botões -->
+        <div class="pt-6 flex gap-4">
+          <button 
+            type="submit"
+            [disabled]="isSubmitting"
+            class="flex-1 py-3 px-6 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm uppercase tracking-wider rounded-xl shadow-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            <span *ngIf="isSubmitting" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            {{ isSubmitting 
+              ? (isEditing ? 'A GUARDAR...' : 'A CRIAR...') 
+              : (isEditing ? 'GUARDAR ALTERAÇÕES' : 'CRIAR UTILIZADOR') }}
+          </button>
+          <button 
+            type="button"
+            (click)="handleClose()"
+            [disabled]="isSubmitting"
+            class="px-8 py-3 text-sm font-bold uppercase tracking-wider rounded-xl transition-colors bg-transparent text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>

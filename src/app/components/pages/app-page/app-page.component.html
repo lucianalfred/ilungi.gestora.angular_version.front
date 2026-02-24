@@ -33,7 +33,7 @@
 
       <app-sidebar-nav-item
         icon="check-square"
-        label="Tasks"
+        label="Tarefas"
         [active]="activeTab() === 'tasks'"
         (click)="setActiveTabSafe('tasks')">
       </app-sidebar-nav-item>
@@ -42,14 +42,14 @@
 
         <app-sidebar-nav-item
           icon="users"
-          label="Users"
+          label="Utilizadores"
           [active]="activeTab() === 'users'"
           (click)="setActiveTabSafe('users')">
         </app-sidebar-nav-item>
 
         <app-sidebar-nav-item
           icon="bar-chart-2"
-          label="Reports"
+          label="Relatórios"
           [active]="activeTab() === 'reports'"
           (click)="setActiveTabSafe('reports')">
         </app-sidebar-nav-item>
@@ -58,11 +58,11 @@
 
       <app-sidebar-nav-item
         icon="user"
-        label="Profile"
+        label="Meu Perfil"
         [active]="activeTab() === 'profile'"
         (click)="setActiveTabSafe('profile')">
       </app-sidebar-nav-item>
-
+      
     </nav>
 
     <div class="p-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
@@ -195,44 +195,61 @@
           </app-dashboard-view>
         </div>
 
-        <!-- Tasks View - VERIFIQUE SE ESTÁ CORRETAMENTE FECHADA -->
-        <div *ngIf="activeTab() === 'tasks'" class="h-full">
-          <app-tasks-view 
-            [tasks]="tasks"
-            [users]="users"
-            [user]="user"
-            [searchQuery]="searchQuery()"
-            [statusFilter]="statusFilter()"
-            [isLoading]="false"
-            (searchChange)="handleSearchChange($event)"
-            (statusFilterChange)="handleStatusFilterChange($event)"
-            (advanceStatus)="handleAdvanceStatus($event)"
-            (regressStatus)="handleRegressStatus($event)"
-            (deleteTask)="handleDeleteTask($event)"
-            (addComment)="handleAddComment($event.taskId, $event.text)">
-          </app-tasks-view>  <!-- Esta tag deve estar fechada corretamente -->
-        </div>
+        <!-- Tasks View -->
+        <!-- Tasks View - CORRIGIDO (removido [tasks]) -->
+<div *ngIf="activeTab() === 'tasks'" class="h-full">
+  <app-tasks-view 
+    [users]="users"
+    [user]="user"
+    [searchQuery]="searchQuery()"
+    [statusFilter]="statusFilter()"
+    [isLoading]="false"
+    (searchChange)="handleSearchChange($event)"
+    (statusFilterChange)="handleStatusFilterChange($event)"
+    (advanceStatus)="handleAdvanceStatus($event)"
+    (regressStatus)="handleRegressStatus($event)"
+    (deleteTask)="handleDeleteTask($event)"
+    (addComment)="handleAddComment($event.taskId, $event.text)">
+  </app-tasks-view>
+</div>
 
         <!-- Users View -->
-        <div *ngIf="activeTab() === 'users' && user.role === UserRole.ADMIN" class="h-full">
+        <div *ngIf="activeTab() === 'users' && user?.role === UserRole.ADMIN" class="h-full">
           <app-users-view 
             [users]="users"
             [currentUser]="user"
-            (updateUser)="handleUpdateUser($event.id, $event)"
-            (deleteUser)="handleDeleteUser($event)">
+            [getAvatarUrl]="getAvatarUrl.bind(this)"
+            (updateUser)="handleUpdateUser($event.id, $event.data)"
+            (deleteUser)="handleDeleteUser($event)"
+            (createUser)="handleCreateUser($event)"
+            (avatarUpload)="handleAvatarUpload($event)">
           </app-users-view>
         </div>
-
+        
         <!-- Reports View -->
         <div *ngIf="activeTab() === 'reports' && user.role === UserRole.ADMIN" class="h-full">
-          <app-reports-view></app-reports-view>
+          <app-reports-view 
+            [tasks]="tasks"
+            [users]="users">
+          </app-reports-view>
         </div>
 
-        <!-- Profile View -->
+        <!-- Profile View - COMPLETO COM TODOS OS INPUTS -->
         <div *ngIf="activeTab() === 'profile'" class="h-full">
           <app-profile-view 
             [user]="user"
-            (updateUser)="handleUpdateUser($event.id, $event)">
+            [profilePassword]="profilePassword()"
+            [profilePasswordConfirm]="profilePasswordConfirm()"
+            [profilePasswordError]="profilePasswordError()"
+            [profilePasswordSuccess]="profilePasswordSuccess()"
+            (setProfilePassword)="profilePassword.set($event)"
+            (setProfilePasswordConfirm)="profilePasswordConfirm.set($event)"
+            (setProfilePasswordError)="profilePasswordError.set($event)"
+            (setProfilePasswordSuccess)="profilePasswordSuccess.set($event)"
+            (setActiveTabSafe)="handleSetActiveTabSafe($event)"
+            (onAvatarUpload)="handleAvatarUpload($event)"
+            (updateUser)="handleUpdateUser($event.id, $event.data)"
+            (addNotification)="addNotification($event.userId, $event.message, $event.type)">
           </app-profile-view>
         </div>
       </ng-container>

@@ -63,7 +63,7 @@ export class TasksService {
         : [];
       this.tasksSignal.set(tasks);
     } catch (error) {
-      console.error('Erro ao carregar tarefas:', error);
+     
       this.tasksSignal.set([]);
     } finally {
       this.isLoadingSignal.set(false);
@@ -79,48 +79,40 @@ export class TasksService {
         : [];
       this.tasksSignal.set(tasks);
     } catch (error) {
-      console.error('Erro ao carregar todas as tarefas:', error);
+      
       this.tasksSignal.set([]);
     } finally {
       this.isLoadingSignal.set(false);
     }
   }
 
-  async createTask(taskData: any): Promise<Task> {
-    this.isLoadingSignal.set(true);
-    try {
-      const response = await this.apiService.createTask(taskData).toPromise();
-      const newTask = mapTaskFromAPI(response);
-      
-      this.tasksSignal.update(tasks => [...tasks, newTask]);
-      
-      this.notificationsService.addNotification(
-        'system',
-        `Tarefa "${newTask.title}" criada com sucesso.`,
-        'success'
-      );
-      
-      this.activitiesService.addActivity({
-        type: 'task_created',
-        taskId: newTask.id,
-        taskTitle: newTask.title,
-        description: `Tarefa criada: ${newTask.title}`
-      });
-      
-      return newTask;
-    } catch (error) {
-      console.error('Erro ao criar tarefa:', error);
-      this.notificationsService.addNotification(
-        'system',
-        'Erro ao criar tarefa. Tente novamente.',
-        'error'
-      );
-      throw error;
-    } finally {
-      this.isLoadingSignal.set(false);
-    }
+  // tasks.service.ts
+async createTask(taskData: any): Promise<Task> {
+  this.isLoadingSignal.set(true);
+  try {
+    const response = await this.apiService.createTask(taskData).toPromise();
+    const newTask = mapTaskFromAPI(response);
+    
+    
+    this.tasksSignal.update(tasks => [...tasks, newTask]);
+    
+    console.log('✅ Nova tarefa criada e adicionada ao signal:', newTask);
+    console.log('📊 Total de tarefas agora:', this.tasksSignal().length);
+    
+    this.notificationsService.addNotification(
+      'system',
+      `Tarefa "${newTask.title}" criada com sucesso.`,
+      'success'
+    );
+    
+    return newTask;
+  } catch (error) {
+    console.error('Erro ao criar tarefa:', error);
+    throw error;
+  } finally {
+    this.isLoadingSignal.set(false);
   }
-
+}
   async updateTask(id: string, taskData: any): Promise<Task> {
     this.isLoadingSignal.set(true);
     try {

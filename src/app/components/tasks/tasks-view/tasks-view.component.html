@@ -55,15 +55,15 @@
       <div class="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
     </div>
 
-    <!-- Tasks Grid - CORRIGIDO: usando filteredTasks em vez de tasks -->
+    <!-- Tasks Grid -->
     <div *ngIf="!isLoading" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
       
       <!-- Lista de tarefas filtradas -->
       <ng-container *ngIf="filteredTasks.length > 0; else noTasks">
-        <app-task-card *ngFor="let task of filteredTasks"
+        <app-task-card *ngFor="let task of filteredTasks; trackBy: trackByTaskId"
           [task]="task"
-          [user]="user"
           [users]="users"
+          [user]="user"
           (onAdvance)="onAdvanceTask(task)"
           (onRegress)="onRegressTask(task)"
           (onDelete)="onDeleteTask(task)"
@@ -77,6 +77,9 @@
         <div class="col-span-full py-20 text-center space-y-6">
           <app-icon name="clipboard-list" class="mx-auto text-slate-100 dark:text-slate-800" [size]="100"></app-icon>
           <p class="text-slate-400 font-bold uppercase tracking-widest">{{ t.noTasks || 'Nenhuma tarefa encontrada' }}</p>
+          <p *ngIf="user?.role === UserRole.ADMIN" class="text-sm text-slate-500">
+            Clique no botão "Nova Tarefa" para começar.
+          </p>
         </div>
       </ng-template>
     </div>

@@ -64,6 +64,11 @@ export interface Translations {
   confirmPassword: string;
   passwordMismatch: string;
   passwordChanged: string;
+  myProfile: string;
+  name: string;
+  email: string;
+  position: string;
+  department: string;
   
   // Reports
   reports: string;
@@ -92,6 +97,12 @@ export interface Translations {
 
 export const TRANSLATIONS: Record<string, Translations> = {
   pt: {
+    myProfile: 'Meu Perfil',
+    name: 'Nome',
+    email: 'Email',
+    position: 'Cargo',
+    department: 'Departamento',
+
     // Geral
     appName: 'GESTORA',
     loading: 'Carregando...',
@@ -174,6 +185,11 @@ export const TRANSLATIONS: Record<string, Translations> = {
     statusFechado: 'Fechado'
   },
   en: {
+    myProfile: 'My Profile',
+name: 'Name',
+email: 'Email',
+position: 'Position',
+department: 'Department',
     // Geral
     appName: 'GESTORA',
     loading: 'Loading...',

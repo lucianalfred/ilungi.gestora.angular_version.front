@@ -1,8 +1,7 @@
-import { Component, Input, Output, EventEmitter, signal, computed } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { User, UserRole } from '../../../models/types';
-import { LanguageService } from '../../../services/language.service';
 
 @Component({
   selector: 'app-user-card',
@@ -15,27 +14,24 @@ export class UserCardComponent {
   @Input() user!: User;
   @Input() currentUser!: User;
   @Input() isDeleting = false;
+  @Input() getAvatarUrl!: (user: User) => string | null;
 
   @Output() onEdit = new EventEmitter<string>();
   @Output() onDelete = new EventEmitter<string>();
   @Output() onAvatarUpload = new EventEmitter<string>();
 
-  // icon variables removed; use <app-icon name="..."> in templates
-
   isLocalDeleting = signal(false);
 
-  constructor(private languageService: LanguageService) {}
-
-  get t() {
-    return this.languageService.translations();
+  get UserRole() {
+    return UserRole;
   }
 
   get isCurrentUser(): boolean {
-    return this.currentUser.id === this.user.id;
+    return this.currentUser?.id === this.user?.id;
   }
 
   get isAdmin(): boolean {
-    return this.currentUser.role === UserRole.ADMIN;
+    return this.currentUser?.role === UserRole.ADMIN;
   }
 
   get canEdit(): boolean {
@@ -50,21 +46,11 @@ export class UserCardComponent {
     return this.isLocalDeleting() || this.isDeleting;
   }
 
-  get createdAt(): string | null {
-    return this.user.createdAt 
-      ? new Date(this.user.createdAt).toLocaleDateString('pt-PT', { 
-          day: '2-digit', 
-          month: '2-digit', 
-          year: 'numeric' 
-        })
-      : null;
+  handleEdit(): void {
+    this.onEdit.emit(this.user.id);
   }
 
-  get UserRole() {
-    return UserRole;
-  }
-
-  handleDelete() {
+  handleDelete(): void {
     if (!confirm(`Tem certeza que deseja excluir ${this.user.name}?`)) {
       return;
     }
@@ -74,11 +60,7 @@ export class UserCardComponent {
     setTimeout(() => this.isLocalDeleting.set(false), 1000);
   }
 
-  handleEdit() {
-    this.onEdit.emit(this.user.id);
-  }
-
-  handleAvatarUpload() {
+  handleAvatarUpload(): void {
     if (this.isAdmin && !this.isLoading) {
       this.onAvatarUpload.emit(this.user.id);
     }

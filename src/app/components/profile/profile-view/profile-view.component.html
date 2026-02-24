@@ -1,36 +1,251 @@
-<!-- Edit button -->
-<button (click)="startEditing()" class="flex items-center gap-2">
-  <app-icon name="pencil" [size]="16"></app-icon>
-  Editar Perfil
-</button>
+<div class="max-w-2xl mx-auto space-y-8 animate-in p-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <h3 class="text-lg font-black text-slate-900 dark:text-white">
+      {{ t.myProfile || 'Meu Perfil' }}
+    </h3>
+    <button
+      *ngIf="!isEditing() && !user.mustChangePassword"
+      (click)="startEditing()"
+      class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
+    >
+      <app-icon name="pencil" [size]="16"></app-icon>
+      Editar Perfil
+    </button>
+  </div>
 
-<!-- Alert -->
-<div class="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-  <div class="flex items-start gap-3">
-    <app-icon name="alert-triangle" class="text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" [size]="18"></app-icon>
-    <p class="text-sm text-amber-800 dark:text-amber-300">
-      Por segurança, altere sua senha para continuar.
-    </p>
+  <!-- Profile Information -->
+  <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 border border-slate-100 dark:border-slate-800 shadow-sm">
+    <!-- Alerta de mudança de senha obrigatória -->
+    <div *ngIf="user?.mustChangePassword" class="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+      <div class="flex items-start gap-3">
+        <app-icon name="alert-triangle" class="text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" [size]="18"></app-icon>
+        <p class="text-sm text-amber-800 dark:text-amber-300">
+          Por segurança, altere sua senha para continuar.
+        </p>
+      </div>
+    </div>
+
+    <div class="flex flex-col sm:flex-row gap-6 mb-8">
+      <!-- Avatar -->
+      <button 
+        type="button" 
+        (click)="onAvatarClick()" 
+        class="flex-shrink-0 w-24 h-24 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden self-center sm:self-start hover:opacity-80 transition-opacity group relative"
+        title="Clique para alterar avatar"
+      >
+        <ng-container *ngIf="getAvatarUrl(user); else noAvatar">
+          <img 
+            [src]="getAvatarUrl(user)!" 
+            [alt]="user.name" 
+            class="w-full h-full object-cover"
+            (error)="handleImageError($event)"
+          />
+        </ng-container>
+        <ng-template #noAvatar>
+          <app-icon name="user" [size]="40" class="text-slate-400"></app-icon>
+        </ng-template>
+        <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
+          <span class="text-white text-xs font-bold">Alterar</span>
+        </div>
+      </button>
+
+      <!-- Formulário ou Visualização -->
+      <div class="flex-1">
+        <!-- MODO EDIÇÃO -->
+        <div *ngIf="isEditing(); else viewMode">
+          <form (ngSubmit)="handleProfileUpdate($event)" class="space-y-4">
+            <div>
+              <label class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block mb-1">
+                {{ t.name || 'Nome' }}
+              </label>
+              <input 
+                name="name" 
+                [ngModel]="user.name"
+                class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all font-bold text-sm" 
+                required 
+              />
+            </div>
+            
+            <div>
+              <label class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block mb-1">
+                {{ t.email || 'Email' }}
+              </label>
+              <input 
+                name="email" 
+                type="email" 
+                [ngModel]="user.email"
+                class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all font-bold text-sm" 
+                required 
+                [disabled]="user.role !== UserRole.ADMIN"
+              />
+              <p *ngIf="user.role !== UserRole.ADMIN" class="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+                Contacte um administrador para alterar o email.
+              </p>
+            </div>
+
+            <!-- Campos apenas para admin -->
+            <ng-container *ngIf="user.role === UserRole.ADMIN">
+              <div>
+                <label class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block mb-1">
+                  {{ t.position || 'Cargo' }}
+                </label>
+                <input 
+                  name="position" 
+                  [ngModel]="user.position"
+                  class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all font-bold text-sm" 
+                />
+              </div>
+              
+              <div>
+                <label class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block mb-1">
+                  {{ t.department || 'Departamento' }}
+                </label>
+                <input 
+                  name="department" 
+                  [ngModel]="user.department"
+                  class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all font-bold text-sm" 
+                />
+              </div>
+              
+              <div>
+                <label class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block mb-1">
+                  Função
+                </label>
+                <select 
+                  name="role" 
+                  [ngModel]="user.role"
+                  class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all font-bold text-sm appearance-none"
+                >
+                  <option [value]="UserRole.USER">Funcionário</option>
+                  <option [value]="UserRole.ADMIN">Administrador</option>
+                </select>
+              </div>
+            </ng-container>
+
+            <div class="flex gap-3 mt-6">
+              <button 
+                type="submit"
+                [disabled]="isUpdating()"
+                class="flex-1 px-8 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-3 disabled:opacity-50 bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl shadow-emerald-500/20"
+              >
+                <app-icon *ngIf="isUpdating()" name="loader-2" [size]="18" class="animate-spin"></app-icon>
+                {{ isUpdating() ? 'Salvando...' : (t.save || 'Salvar') }}
+              </button>
+              <button 
+                type="button"
+                (click)="cancelEditing()"
+                [disabled]="isUpdating()"
+                class="px-6 py-3 rounded-xl font-bold text-sm transition-all bg-transparent text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                {{ t.cancel || 'Cancelar' }}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- MODO VISUALIZAÇÃO -->
+        <ng-template #viewMode>
+          <div class="space-y-4">
+            <div>
+              <p class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{{ t.name || 'Nome' }}</p>
+              <p class="font-bold text-slate-900 dark:text-white text-lg">{{ user.name }}</p>
+            </div>
+            
+            <div>
+              <p class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{{ t.email || 'Email' }}</p>
+              <p class="font-bold text-slate-900 dark:text-white">{{ user.email }}</p>
+            </div>
+            
+            <div *ngIf="user.position">
+              <p class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{{ t.position || 'Cargo' }}</p>
+              <p class="font-bold text-slate-900 dark:text-white">{{ user.position }}</p>
+            </div>
+            
+            <div *ngIf="user.department">
+              <p class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{{ t.department || 'Departamento' }}</p>
+              <p class="font-bold text-slate-900 dark:text-white">{{ user.department }}</p>
+            </div>
+            
+            <div>
+              <p class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">Função</p>
+              <p class="font-bold text-emerald-500 uppercase text-sm">
+                {{ user.role === UserRole.ADMIN ? 'Administrador' : 'Funcionário' }}
+              </p>
+            </div>
+          </div>
+        </ng-template>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Password Section -->
+  <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 border border-slate-100 dark:border-slate-800 shadow-sm">
+    <h4 class="text-base font-black mb-4 text-slate-900 dark:text-white">
+      Alterar Senha
+    </h4>
+    
+    <!-- Mensagem de erro -->
+    <div *ngIf="profilePasswordError" class="mb-4 p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg">
+      <div class="flex items-start gap-3">
+        <app-icon name="alert-triangle" class="text-rose-600 dark:text-rose-400 mt-0.5 flex-shrink-0" [size]="18"></app-icon>
+        <p class="text-sm text-rose-700 dark:text-rose-300">{{ profilePasswordError }}</p>
+      </div>
+    </div>
+    
+    <!-- Mensagem de sucesso -->
+    <div *ngIf="profilePasswordSuccess" class="mb-4 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+      <div class="flex items-start gap-3">
+        <app-icon name="check-circle-2" class="text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" [size]="18"></app-icon>
+        <p class="text-sm text-emerald-700 dark:text-emerald-300">{{ profilePasswordSuccess }}</p>
+      </div>
+    </div>
+
+    <form (ngSubmit)="handlePasswordChange($event)" class="space-y-4">
+      <div>
+        <label class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block mb-1">
+          Nova senha
+        </label>
+        <div class="relative">
+          <input
+            [ngModel]="profilePassword"
+            (ngModelChange)="setProfilePassword.emit($event)"
+            name="password"
+            type="password"
+            class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all font-bold text-sm"
+            placeholder="Mínimo 6 caracteres"
+          />
+          <app-icon name="lock" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" [size]="16"></app-icon>
+        </div>
+      </div>
+      
+      <div>
+        <label class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block mb-1">
+          Confirmar senha
+        </label>
+        <div class="relative">
+          <input
+            [ngModel]="profilePasswordConfirm"
+            (ngModelChange)="setProfilePasswordConfirm.emit($event)"
+            name="confirmPassword"
+            type="password"
+            class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all font-bold text-sm"
+            placeholder="Repita a senha"
+          />
+          <app-icon name="lock" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" [size]="16"></app-icon>
+        </div>
+      </div>
+
+      <div class="flex gap-3 mt-6">
+        <button 
+          type="submit"
+          [disabled]="isChangingPassword()"
+          class="flex-1 px-8 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-3 disabled:opacity-50 bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl shadow-emerald-500/20"
+        >
+          <app-icon *ngIf="isChangingPassword()" name="loader-2" [size]="18" class="animate-spin"></app-icon>
+          {{ isChangingPassword() ? 'Atualizando...' : 'Atualizar senha' }}
+        </button>
+      </div>
+    </form>
   </div>
 </div>
-
-<!-- Avatar -->
-<button ...>
-  @if (getAvatarUrl(user)) {
-    <img [src]="getAvatarUrl(user)!" [alt]="user.name" />
-  } @else {
-    <app-icon name="user" [size]="40" class="text-slate-400"></app-icon>
-  }
-</button>
-
-<!-- Loading -->
-<app-icon name="loader-2" [size]="18" class="animate-spin"></app-icon>
-
-<!-- Password fields -->
-<div class="relative">
-  <input ... />
-  <app-icon name="lock" [size]="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></app-icon>
-</div>
-
-<!-- Error Message -->              
-

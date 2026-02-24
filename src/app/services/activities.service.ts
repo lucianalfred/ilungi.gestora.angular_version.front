@@ -2,7 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { Activity } from '../models/types';
 
 interface ActivityInput {
-  type: 'task_created' | 'task_updated' | 'task_deleted' | 'status_changed' | 'comment_added' | 'user_added' | 'user_updated' | 'user_deleted';
+  type: 'task_created' | 'task_updated' | 'task_deleted' | 'status_changed' | 'comment_added' | 'user_added' | 'user_updated' | 'user_deleted' | 'password_changed';
   userId?: string;
   userName?: string;
   taskId?: string;

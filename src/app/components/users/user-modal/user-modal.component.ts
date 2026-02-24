@@ -1,12 +1,11 @@
 import { Component, Input, Output, EventEmitter, signal, OnInit, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ModalComponent } from '../../shared/modal/modal.component';
+import { IconComponent } from '../../shared/icon/icon.component';
 import { ButtonComponent } from '../../shared/button/button.component';
-import { InputComponent } from '../../shared/input/input.component';
 import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner.component';
 import { User, UserRole } from '../../../models/types';
-import { LucideAngularModule } from 'lucide-angular'; 
+import { LanguageService } from '../../../services/language.service';
 
 @Component({
   selector: 'app-user-modal',
@@ -14,11 +13,9 @@ import { LucideAngularModule } from 'lucide-angular';
   imports: [
     CommonModule,
     FormsModule,
-    ModalComponent,
+    IconComponent,
     ButtonComponent,
-    InputComponent,
-    LoadingSpinnerComponent,
-     LucideAngularModule
+    LoadingSpinnerComponent
   ],
   templateUrl: './user-modal.component.html',
   styleUrls: ['./user-modal.component.css']
@@ -37,11 +34,13 @@ export class UserModalComponent implements OnInit, OnChanges {
   name = signal('');
   email = signal('');
   phone = signal('');
+  position = signal('');
+  department = signal('');
   role = signal<UserRole>(UserRole.USER);
 
-  errors: { [key: string]: string } = {};
+  error = signal<string | null>(null);
 
-  constructor() {}
+  constructor(private languageService: LanguageService) {}
 
   ngOnInit() {
     this.resetForm();
@@ -56,6 +55,10 @@ export class UserModalComponent implements OnInit, OnChanges {
     }
   }
 
+  get t() {
+    return this.languageService.translations();
+  }
+
   get editingUser(): User | undefined {
     return this.editingUserId 
       ? this.users.find(u => u.id === this.editingUserId)
@@ -66,12 +69,23 @@ export class UserModalComponent implements OnInit, OnChanges {
     return UserRole;
   }
 
+  get isEditing(): boolean {
+    return !!this.editingUserId;
+  }
+
+  get isSelf(): boolean {
+    return this.editingUserId === this.currentUser.id;
+  }
+
   loadUserData() {
     if (this.editingUser) {
       this.name.set(this.editingUser.name);
       this.email.set(this.editingUser.email);
       this.phone.set(this.editingUser.phone || '');
+      this.position.set(this.editingUser.position || '');
+      this.department.set(this.editingUser.department || '');
       this.role.set(this.editingUser.role);
+      this.error.set(null);
     }
   }
 
@@ -79,31 +93,48 @@ export class UserModalComponent implements OnInit, OnChanges {
     this.name.set('');
     this.email.set('');
     this.phone.set('');
+    this.position.set('');
+    this.department.set('');
     this.role.set(UserRole.USER);
-    this.errors = {};
+    this.error.set(null);
   }
 
   validateForm(): boolean {
-    this.errors = {};
-    let isValid = true;
-
     if (!this.name().trim()) {
-      this.errors['name'] = 'Nome é obrigatório';
-      isValid = false;
+      this.error.set('Por favor, preencha o nome.');
+      return false;
     }
 
     if (!this.email().trim()) {
-      this.errors['email'] = 'Email é obrigatório';
-      isValid = false;
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(this.email())) {
-        this.errors['email'] = 'Email inválido';
-        isValid = false;
+      this.error.set('Por favor, preencha o email.');
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(this.email())) {
+      this.error.set('Por favor, insira um email válido.');
+      return false;
+    }
+
+    if (!this.isEditing) {
+      const emailExists = this.users.some(u => 
+        u.email.toLowerCase() === this.email().toLowerCase()
+      );
+      if (emailExists) {
+        this.error.set('Este email já está cadastrado no sistema.');
+        return false;
       }
     }
 
-    return isValid;
+    if (this.phone()) {
+      const phoneRegex = /^[0-9+\-\s()]{9,}$/;
+      if (!phoneRegex.test(this.phone())) {
+        this.error.set('Por favor, insira um número de telefone válido.');
+        return false;
+      }
+    }
+
+    return true;
   }
 
   handleSubmit() {
@@ -113,6 +144,8 @@ export class UserModalComponent implements OnInit, OnChanges {
       name: this.name(),
       email: this.email(),
       phone: this.phone() || undefined,
+      position: this.position() || undefined,
+      department: this.department() || undefined,
       role: this.role()
     };
 

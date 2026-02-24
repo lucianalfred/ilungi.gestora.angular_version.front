@@ -21,13 +21,11 @@ import { UsersService } from '../../../services/users.service';
 })
 export class ProfileViewComponent implements OnInit {
   @Input() user!: User;
-  @Input() users: User[] = [];
   @Input() profilePassword = '';
   @Input() profilePasswordConfirm = '';
   @Input() profilePasswordError: string | null = null;
   @Input() profilePasswordSuccess: string | null = null;
 
-  @Output() setUser = new EventEmitter<User | null>();
   @Output() setProfilePassword = new EventEmitter<string>();
   @Output() setProfilePasswordConfirm = new EventEmitter<string>();
   @Output() setProfilePasswordError = new EventEmitter<string | null>();
@@ -37,9 +35,7 @@ export class ProfileViewComponent implements OnInit {
   @Output() updateUser = new EventEmitter<{ id: string; data: any }>();
   @Output() addNotification = new EventEmitter<{ userId: string; message: string; type?: 'info' | 'success' | 'error' }>();
 
-  
-
-  // Signals
+  // Signals locais
   isEditing = signal(false);
   editedUser = signal<Partial<User>>({});
   isUpdating = signal(false);
@@ -51,10 +47,10 @@ export class ProfileViewComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.startEditing();
+    // Não chamar startEditing aqui - só quando o usuário clicar em editar
   }
 
-  // Computed properties - NÃO são signals, são getters normais
+  // Getters
   get t() {
     return this.languageService.translations();
   }
@@ -67,6 +63,7 @@ export class ProfileViewComponent implements OnInit {
     return user.avatar || null;
   }
 
+  // Métodos
   startEditing() {
     this.editedUser.set({
       name: this.user.name,
@@ -114,10 +111,6 @@ export class ProfileViewComponent implements OnInit {
       // Usar updateUser
       this.updateUser.emit({ id: this.user.id, data: updates });
       
-      // Atualizar o usuário atual
-      const updatedUser = { ...this.user, ...updates };
-      this.setUser.emit(updatedUser);
-      
       this.addNotification.emit({
         userId: this.user.id,
         message: 'Perfil atualizado com sucesso.',
@@ -128,7 +121,7 @@ export class ProfileViewComponent implements OnInit {
       console.error('Erro ao atualizar perfil:', error);
       this.addNotification.emit({
         userId: this.user.id,
-        message: 'Não foi possível atualizar o perfil na API.',
+        message: 'Não foi possível atualizar o perfil.',
         type: 'error'
       });
     } finally {
@@ -161,9 +154,6 @@ export class ProfileViewComponent implements OnInit {
     try {
       await this.usersService.changePassword(this.user.id, this.profilePassword);
       
-      const updatedUser = { ...this.user, mustChangePassword: false };
-      this.setUser.emit(updatedUser);
-      
       this.setProfilePassword.emit('');
       this.setProfilePasswordConfirm.emit('');
       this.setProfilePasswordSuccess.emit('Senha atualizada com sucesso.');
@@ -173,9 +163,17 @@ export class ProfileViewComponent implements OnInit {
       }
     } catch (error) {
       console.error('Erro ao alterar senha:', error);
-      this.setProfilePasswordError.emit('Não foi possível atualizar a senha na API.');
+      this.setProfilePasswordError.emit('Não foi possível atualizar a senha.');
     } finally {
       this.isChangingPassword.set(false);
     }
+  }
+  handleImageError(event: Event) {
+    const img = event.target as HTMLImageElement;
+    img.style.display = 'none';
+  }
+
+  onAvatarClick() {
+    this.onAvatarUpload.emit(this.user.id);
   }
 }
