@@ -1,76 +1,29 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable } from 'rxjs';
 import { environment } from '../enviroments/enviroment';
-
-export interface LoginResponse {
-  token?: string;
-  jwt?: string;
-  user?: any;
-}
-
-export interface UserResponse {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-  phone?: string;
-  avatar?: string;
-  position?: string;
-  department?: string;
-  mustChangePassword?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface TaskResponse {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  priority?: string;
-  responsibleId: string;
-  intervenientes?: string[];
-  startDate: string;
-  deliveryDate: string;
-  comments?: any[];
-  createdById: string;
-  createdByName?: string;
-  createdAt: string;
-  updatedAt: string;
-  daysToFinish?: number;
-  deadlineValue?: number;
-  deadlineType?: string;
-}
 
 @Injectable({
   providedIn: 'root'
 })
 export class ApiService {
-  private apiBase = environment.apiUrl;
-  private tokenKey = 'gestora_api_token';
+  private apiUrl = environment.apiUrl;
+  private tokenKey = 'gestora_token';
+  private token: string | null = null;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    this.loadTokenFromStorage();
+  }
 
-  private getHeaders(): HttpHeaders {
-    const token = this.getToken();
-    let headers = new HttpHeaders({
-      'Content-Type': 'application/json'
-    });
-    
-    if (token) {
-      headers = headers.set('Authorization', `Bearer ${token}`);
+  private loadTokenFromStorage(): void {
+    const storedToken = localStorage.getItem(this.tokenKey);
+    if (storedToken) {
+      this.token = storedToken;
     }
-    
-    return headers;
   }
 
-  getToken(): string | null {
-    return localStorage.getItem(this.tokenKey) || sessionStorage.getItem(this.tokenKey);
-  }
-
-  setToken(token: string, remember: boolean = false): void {
+  setToken(token: string, remember: boolean = true): void {
+    this.token = token;
     if (remember) {
       localStorage.setItem(this.tokenKey, token);
     } else {
@@ -79,234 +32,196 @@ export class ApiService {
   }
 
   removeToken(): void {
+    this.token = null;
     localStorage.removeItem(this.tokenKey);
     sessionStorage.removeItem(this.tokenKey);
   }
 
-  private handleError(error: HttpErrorResponse) {
-    console.error('API Error:', error);
+  getToken(): string | null {
+    if (this.token) return this.token;
     
-    let errorMessage = 'Erro desconhecido';
-    if (error.error instanceof ErrorEvent) {
-      // Erro do cliente
-      errorMessage = error.error.message;
-    } else {
-      // Erro do servidor
-      errorMessage = error.error?.message || error.message || `Erro ${error.status}`;
+    const stored = localStorage.getItem(this.tokenKey) || sessionStorage.getItem(this.tokenKey);
+    if (stored) {
+      this.token = stored;
     }
-    
-    return throwError(() => new Error(errorMessage));
+    return this.token;
   }
 
-  // =================== AUTH ENDPOINTS ===================
+  private getHeaders(): HttpHeaders {
+    let headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
 
-  login(email: string, password: string): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${this.apiBase}/auth/login`, { email, password })
-      .pipe(
-        tap(response => {
-          const token = response.token || response.jwt;
-          if (token) {
-            this.setToken(token);
-          }
-        }),
-        catchError(this.handleError)
-      );
+    const token = this.getToken();
+    if (token) {
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    return headers;
+  }
+
+  // AUTENTICAÇÃO
+  login(email: string, password: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/auth/login`, { email, password });
   }
 
   logout(): Observable<any> {
-    this.removeToken();
-    return this.http.post(`${this.apiBase}/auth/logout`, {}, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+    return this.http.post(`${this.apiUrl}/auth/logout`, {}, { headers: this.getHeaders() });
   }
 
-  getCurrentUser(): Observable<UserResponse> {
-    return this.http.get<UserResponse>(`${this.apiBase}/auth/me`, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  register(email: string, name: string, password: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/auth/register`, { email, name, password });
   }
 
-  register(email: string, name: string, password: string, phone?: string): Observable<any> {
-    return this.http.post(`${this.apiBase}/auth/register`, { email, name, password, phone })
-      .pipe(catchError(this.handleError));
-  }
-
-  forgotPassword(email: string): Observable<any> {
-    return this.http.post(`${this.apiBase}/auth/forgot-password`, { email })
-      .pipe(catchError(this.handleError));
-  }
-
-  resetPassword(token: string, newPassword: string, confirmPassword: string): Observable<any> {
-    return this.http.post(`${this.apiBase}/auth/reset-password`, { token, newPassword, confirmPassword })
-      .pipe(catchError(this.handleError));
-  }
-
-  validateResetToken(token: string): Observable<any> {
-    return this.http.get(`${this.apiBase}/auth/validate-reset-token/${token}`)
-      .pipe(catchError(this.handleError));
+  getCurrentUser(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/auth/me`, { headers: this.getHeaders() });
   }
 
   validateSetupToken(token: string): Observable<any> {
-    return this.http.get(`${this.apiBase}/auth/validate-setup-token/${token}`)
-      .pipe(catchError(this.handleError));
+    return this.http.post(`${this.apiUrl}/auth/validate-setup-token`, { token });
   }
 
   setupPassword(token: string, password: string, confirmPassword: string): Observable<any> {
-    return this.http.post(`${this.apiBase}/auth/setup-password`, { token, password, confirmPassword })
-      .pipe(catchError(this.handleError));
+    return this.http.post(`${this.apiUrl}/auth/setup-password`, { token, password, confirmPassword });
   }
 
-  // =================== TASKS ENDPOINTS ===================
-
-  getMyTasks(): Observable<TaskResponse[]> {
-    return this.http.get<TaskResponse[]>(`${this.apiBase}/tasks/my-tasks`, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  forgotPassword(email: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/auth/forgot-password`, { email });
   }
 
-  getAllTasks(): Observable<TaskResponse[]> {
-    return this.http.get<TaskResponse[]>(`${this.apiBase}/admin/tasks`, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  validateResetToken(token: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/auth/validate-reset-token`, { token });
   }
 
-  getTaskById(id: string): Observable<TaskResponse> {
-    return this.http.get<TaskResponse>(`${this.apiBase}/tasks/${id}`, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  resetPassword(token: string, newPassword: string, confirmPassword: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/auth/reset-password`, { token, newPassword, confirmPassword });
   }
 
-  createTask(taskData: any): Observable<TaskResponse> {
-    return this.http.post<TaskResponse>(`${this.apiBase}/admin/tasks`, taskData, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  // TAREFAS
+  getMyTasks(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/tasks/my-tasks`, { headers: this.getHeaders() });
   }
 
-  updateTask(id: string, taskData: any): Observable<TaskResponse> {
-    return this.http.put<TaskResponse>(`${this.apiBase}/tasks/${id}`, taskData, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  getTasks(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/tasks`, { headers: this.getHeaders() });
+  }
+
+  getTaskById(id: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/tasks/${id}`, { headers: this.getHeaders() });
+  }
+
+  createTask(taskData: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/admin/tasks`, taskData, { headers: this.getHeaders() });
+  }
+
+  updateTask(id: string, taskData: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/tasks/${id}`, taskData, { headers: this.getHeaders() });
   }
 
   deleteTask(id: string): Observable<any> {
-    return this.http.delete(`${this.apiBase}/tasks/${id}`, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+    return this.http.delete(`${this.apiUrl}/tasks/${id}`, { headers: this.getHeaders() });
   }
 
-  updateTaskStatus(id: string, status: string): Observable<TaskResponse> {
-    return this.http.patch<TaskResponse>(`${this.apiBase}/tasks/${id}/status`, { status }, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  updateTaskStatus(id: string, status: string): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/tasks/${id}/status`, { status }, { headers: this.getHeaders() });
   }
 
-  getTaskStats(): Observable<any> {
-    return this.http.get(`${this.apiBase}/tasks/my-stats`, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  // COMENTÁRIOS
+  createComment(taskId: string, text: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/tasks/${taskId}/comments`, { text }, { headers: this.getHeaders() });
   }
 
-  // =================== USERS ENDPOINTS ===================
-
-  getUsers(): Observable<UserResponse[]> {
-    return this.http.get<UserResponse[]>(`${this.apiBase}/admin/users`, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  // NOTIFICAÇÕES
+  getNotifications(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/notifications`, { headers: this.getHeaders() });
   }
 
-  getAdminUsers(): Observable<UserResponse[]> {
-    return this.http.get<UserResponse[]>(`${this.apiBase}/admin/users`, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  getUnreadNotifications(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/notifications/unread`, { headers: this.getHeaders() });
   }
 
-  getUserById(id: string): Observable<UserResponse> {
-    return this.http.get<UserResponse>(`${this.apiBase}/users/${id}`, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  getUnreadCount(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/notifications/count`, { headers: this.getHeaders() });
   }
 
-  createUser(userData: any): Observable<UserResponse> {
-    return this.http.post<UserResponse>(`${this.apiBase}/admin/users`, userData, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  markNotificationAsRead(id: string): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/notifications/${id}/read`, {}, { headers: this.getHeaders() });
   }
 
-  updateUser(id: string, userData: any): Observable<UserResponse> {
-    return this.http.put<UserResponse>(`${this.apiBase}/admin/users/${id}`, userData, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  markAllNotificationsAsRead(): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/notifications/read-all`, {}, { headers: this.getHeaders() });
+  }
+
+  // USUÁRIOS
+  getUsers(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/users`, { headers: this.getHeaders() });
+  }
+
+  getUserById(id: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/users/${id}`, { headers: this.getHeaders() });
+  }
+
+  // ADMIN - USUÁRIOS
+  createUser(userData: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/admin/users`, userData, { headers: this.getHeaders() });
+  }
+
+  updateUser(id: string, userData: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/admin/users/${id}`, userData, { headers: this.getHeaders() });
   }
 
   deleteUser(id: string): Observable<any> {
-    return this.http.delete(`${this.apiBase}/admin/users/${id}`, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+    return this.http.delete(`${this.apiUrl}/admin/users/${id}`, { headers: this.getHeaders() });
   }
 
-  changeUserRole(id: string, role: string): Observable<UserResponse> {
-    return this.http.patch<UserResponse>(`${this.apiBase}/admin/users/${id}/role?role=${encodeURIComponent(role)}`, {}, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  getAdminUsers(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/admin/users`, { headers: this.getHeaders() });
   }
 
-  updateProfile(id: string, data: any): Observable<UserResponse> {
-    return this.http.patch<UserResponse>(`${this.apiBase}/users/${id}/profile`, data, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  changeUserRole(id: string, role: string): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/admin/users/${id}/role`, { role }, { headers: this.getHeaders() });
   }
 
-  changePassword(id: string, password: string, oldPassword?: string): Observable<any> {
-    return this.http.patch(`${this.apiBase}/users/${id}/password`, { password, oldPassword }, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  getUsersByRole(role: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/admin/users/by-role/${role}`, { headers: this.getHeaders() });
   }
 
-  // =================== COMMENTS ENDPOINTS ===================
-
-  createComment(taskId: string, text: string): Observable<any> {
-    return this.http.post(`${this.apiBase}/tasks/${taskId}/comments`, { text }, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  // ADMIN - TAREFAS
+  getAllTasks(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/admin/tasks`, { headers: this.getHeaders() });
   }
 
-  getTaskComments(taskId: string): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiBase}/tasks/${taskId}/comments`, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  getTasksByUser(userId: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/admin/tasks/user/${userId}`, { headers: this.getHeaders() });
   }
 
-  // =================== DASHBOARD ENDPOINTS ===================
+  assignTaskToUser(taskId: string, userId: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/admin/tasks/${taskId}/assign/${userId}`, {}, { headers: this.getHeaders() });
+  }
 
-  getDashboardStats(): Observable<any> {
-    return this.http.get(`${this.apiBase}/admin/stats`, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+  removeUserFromTask(taskId: string, userId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/admin/tasks/${taskId}/assign/${userId}`, { headers: this.getHeaders() });
+  }
+
+  assignMultipleUsersToTask(taskId: string, userIds: string[]): Observable<any> {
+    return this.http.post(`${this.apiUrl}/admin/tasks/${taskId}/assign-multiple`, userIds, { headers: this.getHeaders() });
+  }
+
+  createTaskWithResponsibles(taskData: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/admin/tasks`, taskData, { headers: this.getHeaders() });
+  }
+
+  // ADMIN - ESTATÍSTICAS
+  getSystemStats(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/admin/stats`, { headers: this.getHeaders() });
   }
 
   getDashboardData(): Observable<any> {
-    return this.http.get(`${this.apiBase}/admin/dashboard`, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError));
+    return this.http.get(`${this.apiUrl}/admin/dashboard`, { headers: this.getHeaders() });
   }
 
-  
-
-// ============================================
-// NOTIFICAÇÕES
-// ============================================
-
-  getNotifications() {
-  return this.http.get(`${this.apiBase}/notifications`, {
-      headers: this.getHeaders()
-    });
-  }
-
-  getUnreadNotifications() {
-    return this.http.get(`${this.apiBase}/notifications/unread`, {
-      headers: this.getHeaders()
-    });
-  }
-
-  getUnreadCount() {
-    return this.http.get(`${this.apiBase}/notifications/count`, {
-      headers: this.getHeaders()
-    });
-  }
-
-  markNotificationAsRead(id: string) {
-    return this.http.patch(`${this.apiBase}/notifications/${id}/read`, {}, {
-      headers: this.getHeaders()
-    });
-  }
-
-    markAllNotificationsAsRead() {
-      return this.http.patch(`${this.apiBase}/notifications/read-all`, {}, {
-      headers: this.getHeaders()
-      });
-    }
-
-  // =================== HEALTH CHECK ===================
-
-  ping(): Observable<any> {
-    return this.http.get(`${this.apiBase}/actuator/health`)
-      .pipe(catchError(this.handleError));
+  // CHANGE PASSWORD
+  changePassword(id: string, newPassword: string, oldPassword?: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/auth/change-password`, { id, newPassword, oldPassword }, { headers: this.getHeaders() });
   }
 }

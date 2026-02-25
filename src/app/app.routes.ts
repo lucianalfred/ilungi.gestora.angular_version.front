@@ -1,5 +1,7 @@
+// src/app/app.routes.ts
 import { Routes } from '@angular/router';
 import { authGuard } from './gaurds/auth.guard';
+import { loginGuard } from './gaurds/login.guard';
 
 export const routes: Routes = [
   {
@@ -10,7 +12,8 @@ export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./components/auth/login/login.component')
-      .then(m => m.LoginComponent)
+      .then(m => m.LoginComponent),
+    canActivate: [loginGuard] 
   },
   {
     path: 'set-password',

@@ -1,24 +1,19 @@
-import { Injectable, signal, computed, effect } from '@angular/core';
+import { Injectable, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
 import { ApiService } from './api.service';
 import { User, UserRole } from '../models/types';
 import { mapUserFromAPI } from '../utils/mapper';
-import { environment
-  
- } from '../enviroments/environment.prod';
+
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
   private userSignal = signal<User | null>(null);
   private isLoadingSignal = signal(false);
-  private hasLoggedRef = false;
 
-  // Signals públicos
   public user = this.userSignal.asReadonly();
   public isLoading = this.isLoadingSignal.asReadonly();
 
-  // Computed signals
   public isAuthenticated = computed(() => this.userSignal() !== null);
   public isAdmin = computed(() => this.userSignal()?.role === UserRole.ADMIN);
 
@@ -26,23 +21,12 @@ export class AuthService {
     private apiService: ApiService,
     private router: Router
   ) {
-    // Tentar carregar usuário do token salvo
     this.loadStoredUser();
-
-    // Efeito para log de desenvolvimento
-    effect(() => {
-      if (!this.hasLoggedRef && !environment.production) {
-        console.log('🔍 AuthService - estado:', {
-          user: this.userSignal(),
-          isAuthenticated: this.isAuthenticated()
-        });
-        this.hasLoggedRef = true;
-      }
-    });
   }
 
   private async loadStoredUser() {
     const token = this.apiService.getToken();
+    
     if (!token) {
       this.userSignal.set(null);
       return;
@@ -51,6 +35,7 @@ export class AuthService {
     this.isLoadingSignal.set(true);
     try {
       const response = await this.apiService.getCurrentUser().toPromise();
+      
       if (response) {
         const user = mapUserFromAPI(response);
         this.userSignal.set(user);
@@ -59,7 +44,6 @@ export class AuthService {
         this.userSignal.set(null);
       }
     } catch (error) {
-      console.error('Erro ao carregar usuário:', error);
       this.apiService.removeToken();
       this.userSignal.set(null);
     } finally {
@@ -93,7 +77,6 @@ export class AuthService {
         this.router.navigate(['/app']);
       }
     } catch (error) {
-      console.error('Erro no login:', error);
       this.apiService.removeToken();
       this.userSignal.set(null);
       throw error;
@@ -107,11 +90,12 @@ export class AuthService {
     try {
       await this.apiService.logout().toPromise();
     } catch (error) {
-      console.error('Erro no logout:', error);
+      // Ignorar erro no logout
     } finally {
       this.apiService.removeToken();
       this.userSignal.set(null);
       this.isLoadingSignal.set(false);
+      localStorage.removeItem('gestora_remember_email');
       this.router.navigate(['/login']);
     }
   }
@@ -121,16 +105,14 @@ export class AuthService {
     try {
       await this.apiService.register(email, name, password).toPromise();
       
-      // Auto login após 2 segundos
       setTimeout(async () => {
         try {
           await this.login(email, password);
         } catch (loginError) {
-          console.error('Auto-login after registration failed:', loginError);
+          // Ignorar erro no auto-login
         }
       }, 2000);
     } catch (error) {
-      console.error('Erro no registro:', error);
       throw error;
     } finally {
       this.isLoadingSignal.set(false);
@@ -141,7 +123,6 @@ export class AuthService {
     try {
       return await this.apiService.validateSetupToken(token).toPromise();
     } catch (error) {
-      console.error('Erro ao validar token:', error);
       throw error;
     }
   }
@@ -150,7 +131,6 @@ export class AuthService {
     try {
       return await this.apiService.setupPassword(token, password, confirmPassword).toPromise();
     } catch (error) {
-      console.error('Erro ao definir senha:', error);
       throw error;
     }
   }
@@ -159,7 +139,6 @@ export class AuthService {
     try {
       return await this.apiService.validateResetToken(token).toPromise();
     } catch (error) {
-      console.error('Erro ao validar token:', error);
       throw error;
     }
   }
@@ -168,12 +147,16 @@ export class AuthService {
     try {
       return await this.apiService.resetPassword(token, newPassword, confirmPassword).toPromise();
     } catch (error) {
-      console.error('Erro ao redefinir senha:', error);
       throw error;
     }
   }
 
   setUser(user: User | null) {
     this.userSignal.set(user);
+    if (user) {
+      localStorage.setItem('gestora_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('gestora_user');
+    }
   }
 }

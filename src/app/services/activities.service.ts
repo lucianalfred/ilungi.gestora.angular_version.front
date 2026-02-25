@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { Activity } from '../models/types';
 
-interface ActivityInput {
+export interface ActivityInput {
   type: 'task_created' | 'task_updated' | 'task_deleted' | 'status_changed' | 'comment_added' | 'user_added' | 'user_updated' | 'user_deleted' | 'password_changed';
   userId?: string;
   userName?: string;
@@ -23,27 +23,38 @@ export class ActivitiesService {
   public activities = this.activitiesSignal.asReadonly();
 
   constructor() {
+    // Carregar atividades do localStorage ao iniciar
     this.loadStoredActivities();
   }
 
+  /**
+   * Carrega atividades do localStorage
+   */
   private loadStoredActivities() {
     const stored = localStorage.getItem('gestora_activities');
     if (stored) {
       try {
         const activities = JSON.parse(stored);
         this.activitiesSignal.set(activities);
+      
       } catch (e) {
-        console.error('Erro ao carregar atividades:', e);
+      
       }
     }
   }
 
+  /**
+   * Salva atividades no localStorage
+   */
   private saveActivities() {
     // Manter apenas as últimas 200 atividades
     const activities = this.activitiesSignal().slice(0, 200);
     localStorage.setItem('gestora_activities', JSON.stringify(activities));
   }
 
+  /**
+   * Adiciona nova atividade
+   */
   addActivity(input: ActivityInput): Activity {
     const activity: Activity = {
       id: `A-${Math.random().toString(36).substring(2, 9)}`,
@@ -60,7 +71,7 @@ export class ActivitiesService {
     };
 
     this.activitiesSignal.update(prev => {
-      // Verificar duplicatas
+      // Verificar duplicatas (mesmo tipo, mesma task, mesmo usuário nos últimos 5 segundos)
       const exists = prev.some(a => 
         a.userId === activity.userId && 
         a.type === activity.type && 
@@ -80,20 +91,33 @@ export class ActivitiesService {
     return activity;
   }
 
+  /**
+   * Busca atividades de um usuário
+   */
   getActivitiesForUser(userId: string): Activity[] {
     return this.activitiesSignal().filter(a => a.userId === userId);
   }
 
+  /**
+   * Busca atividades de uma tarefa
+   */
   getActivitiesForTask(taskId: string): Activity[] {
     return this.activitiesSignal().filter(a => a.taskId === taskId);
   }
 
+  /**
+   * Busca atividades recentes
+   */
   getRecentActivities(limit: number = 20): Activity[] {
     return this.activitiesSignal().slice(0, limit);
   }
 
+  /**
+   * Limpa todas as atividades
+   */
   clearActivities(): void {
     this.activitiesSignal.set([]);
     localStorage.removeItem('gestora_activities');
+    console.log('🧹 Atividades limpas');
   }
 }

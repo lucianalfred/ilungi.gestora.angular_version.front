@@ -22,7 +22,7 @@ export class NotificationsService {
   });
 
   // Configuração: tempo mínimo entre requisições (em ms)
-  private readonly MIN_FETCH_INTERVAL = 800000; // 30 segundos
+  private readonly MIN_FETCH_INTERVAL = 30000; // 30 segundos
 
   constructor(
     private apiService: ApiService,
