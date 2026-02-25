@@ -91,10 +91,10 @@ export class UsersService {
         : [];
 
       this._users.set([...users]);
-      console.log('✅ Todos os usuários carregados da API:', users.length);
+      
 
     } catch (error) {
-      console.error('Erro ao carregar todos os usuários:', error);
+    
       this._users.set([]);
     } finally {
       this._isLoading.set(false);

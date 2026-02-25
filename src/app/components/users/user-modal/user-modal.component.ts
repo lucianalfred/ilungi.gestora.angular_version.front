@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, OnInit, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, OnInit, OnChanges, SimpleChanges, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IconComponent } from '../../shared/icon/icon.component';
@@ -30,7 +30,7 @@ export class UserModalComponent implements OnInit, OnChanges {
   @Output() onClose = new EventEmitter<void>();
   @Output() onSuccess = new EventEmitter<any>();
 
-  // Form fields
+  // Form fields como signals
   name = signal('');
   email = signal('');
   phone = signal('');
@@ -40,56 +40,119 @@ export class UserModalComponent implements OnInit, OnChanges {
 
   error = signal<string | null>(null);
 
-  constructor(private languageService: LanguageService) {}
+  constructor(
+    private languageService: LanguageService,
+    private cdr: ChangeDetectorRef
+  ) {
+   
+  }
 
   ngOnInit() {
+    
     this.resetForm();
   }
 
   ngOnChanges(changes: SimpleChanges) {
+  
+   
     if (changes['editingUserId'] && this.editingUserId) {
-      this.loadUserData();
+     
+      setTimeout(() => {
+        this.loadUserData();
+      }, 100); 
     }
-    if (changes['isOpen'] && this.isOpen && !this.editingUserId) {
+    
+    if (changes['isOpen'] && !this.isOpen) {
+      console.log('🧹 Modal fechado, resetando formulário');
       this.resetForm();
     }
   }
 
+  
+  get nameValue(): string {
+    return this.name();
+  }
+  set nameValue(value: string) {
+    this.name.set(value);
+  }
+
+  get emailValue(): string {
+    return this.email();
+  }
+  set emailValue(value: string) {
+    this.email.set(value);
+  }
+
+  get phoneValue(): string {
+    return this.phone();
+  }
+  set phoneValue(value: string) {
+    this.phone.set(value);
+  }
+
+  get positionValue(): string {
+    return this.position();
+  }
+  set positionValue(value: string) {
+    this.position.set(value);
+  }
+
+  get departmentValue(): string {
+    return this.department();
+  }
+  set departmentValue(value: string) {
+    this.department.set(value);
+  }
+
+  get roleValue(): UserRole {
+    return this.role();
+  }
+  set roleValue(value: UserRole) {
+    this.role.set(value);
+  }
   get t() {
     return this.languageService.translations();
   }
-
   get editingUser(): User | undefined {
-    return this.editingUserId 
-      ? this.users.find(u => u.id === this.editingUserId)
-      : undefined;
+    if (!this.editingUserId) {
+      return undefined;
+    }
+    const found = this.users.find(u => u.id === this.editingUserId);
+    return found;
   }
-
   get UserRole() {
     return UserRole;
   }
-
   get isEditing(): boolean {
     return !!this.editingUserId;
   }
-
   get isSelf(): boolean {
-    return this.editingUserId === this.currentUser.id;
+    return this.editingUserId === this.currentUser?.id;
   }
-
   loadUserData() {
+  
+    
     if (this.editingUser) {
-      this.name.set(this.editingUser.name);
-      this.email.set(this.editingUser.email);
+     
+      
+      // ATUALIZAR TODOS OS SIGNALS
+      this.name.set(this.editingUser.name || '');
+      this.email.set(this.editingUser.email || '');
       this.phone.set(this.editingUser.phone || '');
       this.position.set(this.editingUser.position || '');
       this.department.set(this.editingUser.department || '');
-      this.role.set(this.editingUser.role);
+      this.role.set(this.editingUser.role || UserRole.USER);
       this.error.set(null);
+      this.cdr.detectChanges();
+    } else {
+      
+     
     }
   }
 
   resetForm() {
+    console.log('🧹 resetForm() chamado');
+    
     this.name.set('');
     this.email.set('');
     this.phone.set('');
@@ -97,6 +160,8 @@ export class UserModalComponent implements OnInit, OnChanges {
     this.department.set('');
     this.role.set(UserRole.USER);
     this.error.set(null);
+    
+
   }
 
   validateForm(): boolean {
@@ -124,6 +189,15 @@ export class UserModalComponent implements OnInit, OnChanges {
         this.error.set('Este email já está cadastrado no sistema.');
         return false;
       }
+    } else {
+      const emailExists = this.users.some(u => 
+        u.id !== this.editingUserId && 
+        u.email.toLowerCase() === this.email().toLowerCase()
+      );
+      if (emailExists) {
+        this.error.set('Este email já está cadastrado em outro utilizador.');
+        return false;
+      }
     }
 
     if (this.phone()) {
@@ -149,10 +223,12 @@ export class UserModalComponent implements OnInit, OnChanges {
       role: this.role()
     };
 
+ 
     this.onSuccess.emit(userData);
   }
 
   handleClose() {
+
     this.resetForm();
     this.onClose.emit();
   }
