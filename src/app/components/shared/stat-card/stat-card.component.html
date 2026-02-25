@@ -1,9 +1,22 @@
-<div class="bg-white dark:bg-slate-900 p-8 rounded-[3.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-8 group hover:shadow-xl transition-all">
-  <div [class]="'w-20 h-20 rounded-[2.2rem] flex items-center justify-center ' + bgColors[color] + ' group-hover:scale-110 transition-transform'">
-    <ng-content select="[icon]"></ng-content>
-  </div>
-  <div>
-    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">{{ label }}</p>
-    <p class="text-4xl font-black text-slate-900 dark:text-white tracking-tighter mt-1">{{ value }}</p>
-  </div>
-</div>
+ <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-lg transition-all">
+      <div class="flex items-center justify-between mb-4">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center"
+             [ngClass]="{
+               'bg-emerald-50 dark:bg-emerald-900/20': color === 'emerald',
+               'bg-rose-50 dark:bg-rose-900/20': color === 'rose',
+               'bg-blue-50 dark:bg-blue-900/20': color === 'blue',
+               'bg-amber-50 dark:bg-amber-900/20': color === 'amber'
+             }">
+          <app-icon [name]="icon" [size]="24" 
+                    [ngClass]="{
+                      'text-emerald-600 dark:text-emerald-400': color === 'emerald',
+                      'text-rose-600 dark:text-rose-400': color === 'rose',
+                      'text-blue-600 dark:text-blue-400': color === 'blue',
+                      'text-amber-600 dark:text-amber-400': color === 'amber'
+                    }">
+          </app-icon>
+        </div>
+        <span class="text-sm font-bold text-slate-400 uppercase tracking-wider">{{ label }}</span>
+      </div>
+      <p class="text-3xl font-black text-slate-900 dark:text-white">{{ value }}</p>
+    </div>

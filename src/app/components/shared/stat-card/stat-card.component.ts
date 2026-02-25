@@ -1,21 +1,17 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { IconComponent } from '../icon/icon.component';
 
 @Component({
   selector: 'app-stat-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   templateUrl: './stat-card.component.html',
-  styleUrls: ['./stat-card.component.css']
+  styleUrls: ['./stat-card.component.css'],
 })
 export class StatCardComponent {
-  @Input() icon: any;
-  @Input() label = '';
-  @Input() value: number = 0;
-  @Input() color: 'emerald' | 'rose' = 'emerald';
-
-  bgColors = {
-    emerald: 'bg-emerald-50 dark:bg-emerald-900/10',
-    rose: 'bg-rose-50 dark:bg-rose-900/10'
-  };
+  @Input() icon: string = 'activity';
+  @Input() label: string = '';
+  @Input() value: number | string = 0;
+  @Input() color: 'emerald' | 'rose' | 'blue' | 'amber' = 'emerald';
 }
