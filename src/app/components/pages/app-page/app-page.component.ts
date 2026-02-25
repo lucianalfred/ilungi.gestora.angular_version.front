@@ -1,6 +1,8 @@
 import { Component, OnInit, OnDestroy, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { Subscription, interval } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 
 import { IconComponent } from '../../shared/icon/icon.component';
 import { SidebarNavItemComponent } from '../../shared/sidebar-nav-item/sidebar-nav-item.component';
@@ -19,8 +21,6 @@ import { ActivitiesService } from '../../../services/activities.service';
 import { NavigationService } from '../../../services/navigation.service';
 import { LanguageService } from '../../../services/language.service';
 import { ThemeService } from '../../../services/theme.service';
-
-
 
 import {
   User,
@@ -53,6 +53,7 @@ export class AppPageComponent implements OnInit, OnDestroy {
   readonly TaskStatus = TaskStatus;
   readonly UserRole = UserRole;
   readonly users = computed(() => this.usersService.users() ?? []);
+
   // ================================
   // Signals (estado local)
   // ================================
@@ -70,6 +71,8 @@ export class AppPageComponent implements OnInit, OnDestroy {
   // Signal do NavigationService
   activeTab = this.navigationService.activeTab;
 
+  private notificationsSubscription?: Subscription;
+
   constructor(
     public authService: AuthService,
     public tasksService: TasksService,
@@ -86,12 +89,28 @@ export class AppPageComponent implements OnInit, OnDestroy {
   // Lifecycle
   // ================================
   ngOnInit(): void {
+   
+    
+    if (this.user) {
+      this.loadUserData();
+      this.loadNotifications();
       
-    this.loadUserData();
+      
+      this.notificationsSubscription = interval(30000).pipe(
+        switchMap(() => {
+          if (this.user) {
+            return this.notificationsService.loadNotifications();
+          }
+          return [];
+        })
+      ).subscribe();
+    }
   }
 
   ngOnDestroy(): void {
-    // cleanup futuro se necessário
+    if (this.notificationsSubscription) {
+      this.notificationsSubscription.unsubscribe();
+    }
   }
 
   // ================================
@@ -109,9 +128,6 @@ export class AppPageComponent implements OnInit, OnDestroy {
   get filteredTasks() {
     return this.tasksService.filteredTasks();
   }
-
-  
-
 
   get notifications(): Notification[] {
     return this.notificationsService.notifications();
@@ -148,12 +164,15 @@ export class AppPageComponent implements OnInit, OnDestroy {
     }
   }
 
+ 
   unreadCount = computed(() => {
-    return this.notifications.filter(n => !n.read).length;
+    return this.notificationsService.unreadCount();
   });
-   handleSetActiveTabSafe(tab: string): void {
-     this.setActiveTabSafe(tab as TabType);
-   }
+
+  handleSetActiveTabSafe(tab: string): void {
+    this.setActiveTabSafe(tab as TabType);
+  }
+
   // ================================
   // Avatar
   // ================================
@@ -204,6 +223,15 @@ export class AppPageComponent implements OnInit, OnDestroy {
     }
   }
 
+  async loadNotifications(): Promise<void> {
+    try {
+      await this.notificationsService.loadNotifications();
+     
+    } catch (error) {
+     
+    }
+  }
+
   setActiveTabSafe(tab: TabType): void {
     if (this.user?.mustChangePassword && tab !== 'profile') {
       this.navigationService.setActiveTab('profile');
@@ -238,12 +266,12 @@ export class AppPageComponent implements OnInit, OnDestroy {
   // Notificações
   // ================================
 
-  markAllNotificationsAsRead(): void {
-    this.notificationsService.markAllAsRead();
+  async markAllNotificationsAsRead(): Promise<void> {
+    await this.notificationsService.markAllAsRead();
   }
 
-  markNotificationAsRead(id: string): void {
-    this.notificationsService.markAsRead(id);
+  async markNotificationAsRead(id: string): Promise<void> {
+    await this.notificationsService.markAsRead(id);
   }
 
   hasUnreadNotifications(): boolean {
@@ -284,6 +312,25 @@ export class AppPageComponent implements OnInit, OnDestroy {
     this.tasksService.addComment(taskId, text);
   }
 
+  async handleCreateTask(taskData: any): Promise<void> {
+    try {
+      const newTask = await this.tasksService.createTask(taskData);
+      
+      this.addNotification(
+        this.user!.id,
+        'Tarefa criada com sucesso!',
+        'success'
+      );
+    } catch (error) {
+   
+      this.addNotification(
+        this.user!.id,
+        'Erro ao criar tarefa.',
+        'error'
+      );
+    }
+  }
+
   // ================================
   // Users
   // ================================
@@ -296,31 +343,6 @@ export class AppPageComponent implements OnInit, OnDestroy {
     this.usersService.deleteUser(userId);
   }
 
-async handleCreateTask(taskData: any): Promise<void> {
-  try {
-    const newTask = await this.tasksService.createTask(taskData);
-    
-    
-   
-    //this.closeTaskModal();
-    
-    this.addNotification(
-      this.user!.id,
-      'Tarefa criada com sucesso!',
-      'success'
-    );
-  } catch (error) {
-    console.error('Erro ao criar tarefa:', error);
-    this.addNotification(
-      this.user!.id,
-      'Erro ao criar tarefa.',
-      'error'
-    );
-  }
-}
-  // ================================
-  // MÉTODO PARA CRIAR USUÁRIO
-  // ================================
   handleCreateUser(userData: any): void {
     this.usersService.createUser(userData);
   }

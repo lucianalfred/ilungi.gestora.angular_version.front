@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { Task, TaskStatus, User, UserRole, Comment } from '../../../models/types';
 import { STATUS_COLORS, StatusOrder } from '../../../constants';
-import { TasksService } from '../../../services/tasks.service'; // 🔥 IMPORTAR SERVIÇO
+import { TasksService } from '../../../services/tasks.service';
 
 @Component({
   selector: 'app-task-card',
@@ -28,13 +28,13 @@ export class TaskCardComponent implements OnInit {
 
   commentText = '';
   showAllComments = false;
-  isLoading = false; 
+  isLoading = false;
   showComments = signal(false);
-
 
   constructor(private tasksService: TasksService) {}
 
   ngOnInit() {
+   
   }
 
   // Mapeamento de aliases de status
@@ -137,7 +137,7 @@ export class TaskCardComponent implements OnInit {
     return this.isFinished ? (this.isAdmin && this.canRegress) : this.canRegress;
   }
 
- 
+  // ✅ LOADING AGORA VEM DO SERVIÇO - SEM TIMEOUT
   get isLoading_(): boolean {
     return this.isLoading || 
            this.tasksService.updatingTaskId() === this.task.id ||
@@ -180,15 +180,15 @@ export class TaskCardComponent implements OnInit {
     return user ? user.name : 'Usuário desconhecido';
   }
 
-  
+  // ✅ HANDLERS - SEM TIMEOUT, apenas emitem eventos
   handleAdvance(): void {
     if (!this.finalCanAdvance || this.isLoading_) return;
-    this.onAdvance.emit(); 
+    this.onAdvance.emit(); // O loading é controlado pelo serviço
   }
 
   handleRegress(): void {
     if (!this.finalCanRegress || this.isLoading_) return;
-    this.onRegress.emit(); 
+    this.onRegress.emit(); // O loading é controlado pelo serviço
   }
 
   handleDelete(): void {
@@ -203,12 +203,9 @@ export class TaskCardComponent implements OnInit {
 
   handleAddComment(): void {
     if (!this.commentText.trim() || this.isLoading_) return;
-    this.isLoading = true; 
     this.onAddComment.emit(this.commentText.trim());
     this.commentText = '';
-    
-  
-    setTimeout(() => this.isLoading = false, 500);
+    // Comentários não têm loading para ser instantâneo
   }
 
   toggleComments(): void {
@@ -250,5 +247,28 @@ export class TaskCardComponent implements OnInit {
 
   getRecentComments(): Comment[] {
     return this.task.comments?.slice(0, 3) || [];
+  }
+
+  // ✅ TODOS OS USUÁRIOS PODEM VER OS RESPONSÁVEIS
+  getAllResponsibles(): User[] {
+    const responsibles: User[] = [];
+    
+    // Adiciona o responsável principal
+    const mainResponsible = this.responsibleUser;
+    if (mainResponsible) {
+      responsibles.push(mainResponsible);
+    }
+    
+    // Adiciona os intervenientes
+    if (this.task.intervenientes?.length) {
+      this.task.intervenientes.forEach(id => {
+        const user = this.users.find(u => u.id === id);
+        if (user) {
+          responsibles.push(user);
+        }
+      });
+    }
+    
+    return responsibles;
   }
 }

@@ -267,6 +267,42 @@ export class ApiService {
       .pipe(catchError(this.handleError));
   }
 
+  
+
+// ============================================
+// NOTIFICAÇÕES
+// ============================================
+
+  getNotifications() {
+  return this.http.get(`${this.apiBase}/notifications`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  getUnreadNotifications() {
+    return this.http.get(`${this.apiBase}/notifications/unread`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  getUnreadCount() {
+    return this.http.get(`${this.apiBase}/notifications/count`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  markNotificationAsRead(id: string) {
+    return this.http.patch(`${this.apiBase}/notifications/${id}/read`, {}, {
+      headers: this.getHeaders()
+    });
+  }
+
+    markAllNotificationsAsRead() {
+      return this.http.patch(`${this.apiBase}/notifications/read-all`, {}, {
+      headers: this.getHeaders()
+      });
+    }
+
   // =================== HEALTH CHECK ===================
 
   ping(): Observable<any> {

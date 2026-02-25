@@ -75,12 +75,12 @@ export class TasksViewComponent {
     return this.tasksService.filteredTasks();
   }
 
-  // TrackBy para performance
+  
   trackByTaskId(index: number, task: Task): string {
     return task.id;
   }
 
-  // Método para obter handler de edição
+ 
   getEditHandler(taskId: string): (() => void) | null {
     if (this.user && this.user.role === UserRole.ADMIN) {
       return () => this.openEditTaskModal(taskId);

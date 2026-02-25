@@ -112,7 +112,7 @@
             class="p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white relative">
             <app-icon name="bell" [size]="20"></app-icon>
 
-            <!-- 🔥 CONTADOR DE NOTIFICAÇÕES NÃO LIDAS -->
+           
             <span *ngIf="unreadCount() > 0"
                   class="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 border-2 border-white dark:border-slate-900">
               {{ unreadCount() > 9 ? '9+' : unreadCount() }}

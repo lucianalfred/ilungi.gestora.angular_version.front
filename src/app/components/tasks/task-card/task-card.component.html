@@ -2,13 +2,7 @@
      [class.opacity-70]="isLoading_"
      [class.pointer-events-none]="isLoading_">
   
-  <!-- Loading Overlay -->
-  <div *ngIf="isLoading_" class="absolute inset-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-20">
-    <div class="flex flex-col items-center gap-2">
-      <app-icon name="loader-2" class="w-8 h-8 animate-spin text-emerald-500"></app-icon>
-      <span class="text-xs font-bold text-slate-600 dark:text-slate-400">Processando...</span>
-    </div>
-  </div>
+  <!-- LOADING OVERLAY REMOVIDO - AGORA A ATUALIZAÇÃO É INSTANTÂNEA -->
 
   <!-- Badge de Atrasada -->
   <div *ngIf="isOverdue()" 
@@ -24,17 +18,16 @@
           {{ task.title }}
         </h3>
         
-        <!-- Status e Prioridade -->
+        <!-- Status -->
         <div class="flex items-center gap-2 flex-wrap">
           <span class="text-xs px-2 py-1 rounded-lg font-bold whitespace-nowrap"
                 [ngClass]="STATUS_COLORS[mappedStatus].badge || 'bg-slate-100 text-slate-600'">
             {{ getStatusLabel(mappedStatus) }}
           </span>
-          
         </div>
       </div>
 
-      <!-- Ações do Admin -->
+      <!-- Ações do Admin (visível apenas para admin) -->
       <div *ngIf="isAdmin" class="flex gap-1 flex-shrink-0">
         <button *ngIf="onEdit" 
                 (click)="handleEdit()"
@@ -42,7 +35,7 @@
                 title="Editar tarefa">
           <app-icon name="pencil" [size]="16"></app-icon>
         </button>
-        <button (click)="onDelete.emit()"
+        <button (click)="handleDelete()"
                 class="p-2 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 title="Eliminar tarefa">
           <app-icon name="trash-2" [size]="16"></app-icon>
@@ -81,46 +74,29 @@
       </div>
     </div>
 
-    <!-- Responsáveis -->
+    <!-- Responsáveis - AGORA VISÍVEL PARA TODOS OS USUÁRIOS -->
     <div>
       <span class="text-slate-500 dark:text-slate-500 block text-[10px] font-bold uppercase tracking-wider mb-2">
         Responsáveis
       </span>
       
-      <!-- Responsável Principal -->
-      <div class="flex items-center gap-2 mb-2">
-        <div class="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-          <app-icon name="user" [size]="12" class="text-slate-500"></app-icon>
-        </div>
-        <div class="flex-1">
-          <p class="text-sm font-medium text-slate-900 dark:text-white">
-            {{ respName }}
-            <span class="text-xs text-slate-500 ml-1">(Responsável)</span>
-          </p>
-        </div>
-      </div>
-
-      <!-- Intervenientes -->
-      <div *ngIf="task.intervenientes?.length" class="space-y-1">
-        <div *ngFor="let intervId of task.intervenientes?.slice(0, 2)" 
+      <!-- Lista de todos os responsáveis -->
+      <div class="space-y-2">
+        <div *ngFor="let responsible of getAllResponsibles()" 
              class="flex items-center gap-2">
-          <div class="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-            <app-icon name="user" [size]="10" class="text-slate-400"></app-icon>
+          <div class="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+            <app-icon name="user" [size]="12" class="text-slate-500"></app-icon>
           </div>
-          <span class="text-xs text-slate-600 dark:text-slate-400">
-            {{ getUserName(intervId) }}
+          <span class="text-sm text-slate-700 dark:text-slate-300">
+            {{ responsible.name }}
+            <span *ngIf="responsible.id === task.responsibleId" class="text-xs text-emerald-500 ml-1">(Responsável)</span>
           </span>
-        </div>
-        
-        <div *ngIf="task.intervenientes && task.intervenientes.length > 2" 
-             class="text-xs text-slate-500 ml-7">
-          +{{ task.intervenientes.length - 2 }} participantes
         </div>
       </div>
     </div>
 
-    <!-- Comentários -->
-    <div *ngIf="isTaskMember || isAdmin">
+    <!-- Comentários - AGORA VISÍVEL PARA TODOS OS USUÁRIOS -->
+    <div>
       <button (click)="toggleComments()" 
               class="flex items-center justify-between w-full text-left mb-2">
         <span class="text-slate-500 dark:text-slate-500 text-[10px] font-bold uppercase tracking-wider">
@@ -152,7 +128,7 @@
           </div>
         </div>
 
-        <!-- Input para novo comentário -->
+        <!-- Input para novo comentário - AGORA VISÍVEL PARA TODOS -->
         <div class="flex gap-2">
           <input
             type="text"
@@ -194,7 +170,7 @@
       <ng-container *ngSwitchCase="true">
         <ng-container *ngIf="!isClosed; else closedBlock">
           <div class="flex gap-2">
-            <!-- Botão RECUAR -->
+            <!-- Botão RECUAR - visível para membros da tarefa e admin -->
             <button *ngIf="finalCanRegress"
                     (click)="handleRegress()"
                     [disabled]="isLoading_"
@@ -205,7 +181,7 @@
               Recuar
             </button>
 
-            <!-- Botão AVANÇAR -->
+            <!-- Botão AVANÇAR - visível para membros da tarefa e admin -->
             <button *ngIf="finalCanAdvance"
                     (click)="handleAdvance()"
                     [disabled]="isLoading_"
@@ -218,14 +194,9 @@
           </div>
 
           <!-- Mensagens informativas -->
-          <div *ngIf="isTaskMember && !finalCanAdvance && !finalCanRegress && !isClosed" 
-               class="text-center text-[10px] text-slate-400 py-1">
-            {{ !nextStatus && !prevStatus ? 'Sem mais ações disponíveis' : 'Não é possível alterar' }}
-          </div>
-
           <div *ngIf="!isTaskMember && !isAdmin && !isClosed" 
                class="text-center text-[10px] text-slate-400 py-1">
-            Apenas membros da tarefa podem agir
+            Apenas membros da tarefa podem alterar o status
           </div>
         </ng-container>
 
