@@ -199,7 +199,7 @@ export class ApiService {
   // =================== USERS ENDPOINTS ===================
 
   getUsers(): Observable<UserResponse[]> {
-    return this.http.get<UserResponse[]>(`${this.apiBase}/users`, { headers: this.getHeaders() })
+    return this.http.get<UserResponse[]>(`${this.apiBase}/admin/users`, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError));
   }
 

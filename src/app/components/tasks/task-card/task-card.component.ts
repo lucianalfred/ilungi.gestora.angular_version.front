@@ -1,9 +1,10 @@
-import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { Task, TaskStatus, User, UserRole, Comment } from '../../../models/types';
 import { STATUS_COLORS, StatusOrder } from '../../../constants';
+import { TasksService } from '../../../services/tasks.service'; // 🔥 IMPORTAR SERVIÇO
 
 @Component({
   selector: 'app-task-card',
@@ -12,7 +13,7 @@ import { STATUS_COLORS, StatusOrder } from '../../../constants';
   templateUrl: './task-card.component.html',
   styleUrls: ['./task-card.component.css']
 })
-export class TaskCardComponent {
+export class TaskCardComponent implements OnInit {
   @Input() task!: Task;
   @Input() user!: User;
   @Input() users: User[] = [];
@@ -27,20 +28,14 @@ export class TaskCardComponent {
 
   commentText = '';
   showAllComments = false;
-  isLoading = false;
+  isLoading = false; 
   showComments = signal(false);
+
+
+  constructor(private tasksService: TasksService) {}
+
   ngOnInit() {
-  console.log('🎯 TaskCard criado/atualizado:', {
-    id: this.task.id,
-    title: this.task.title,
-    description: this.task.description,
-    status: this.task.status,
-    responsibleId: this.task.responsibleId,
-    startDate: this.task.startDate,
-    dueDate: this.task.dueDate,
-    comments: this.task.comments?.length
-  });
-}
+  }
 
   // Mapeamento de aliases de status
   private statusAliasMap: Record<string, TaskStatus> = {
@@ -142,8 +137,11 @@ export class TaskCardComponent {
     return this.isFinished ? (this.isAdmin && this.canRegress) : this.canRegress;
   }
 
+ 
   get isLoading_(): boolean {
-    return this.isLoading || this.isDeleting || this.isUpdating;
+    return this.isLoading || 
+           this.tasksService.updatingTaskId() === this.task.id ||
+           this.tasksService.deletingTaskId() === this.task.id;
   }
 
   get advanceButtonText(): string {
@@ -163,10 +161,9 @@ export class TaskCardComponent {
   }
 
   // ============================================
-  // MÉTODOS PÚBLICOS (FALTANTES)
+  // MÉTODOS PÚBLICOS
   // ============================================
 
-  // ✅ Método para obter label do status
   getStatusLabel(status: TaskStatus): string {
     const labels: Record<TaskStatus, string> = {
       [TaskStatus.PENDENTE]: 'Pendente',
@@ -178,25 +175,20 @@ export class TaskCardComponent {
     return labels[status] || status;
   }
 
-  // ✅ Método para obter nome do usuário por ID
   getUserName(userId: string): string {
     const user = this.users.find(u => u.id === userId);
     return user ? user.name : 'Usuário desconhecido';
   }
 
-  // ✅ Handlers
+  
   handleAdvance(): void {
     if (!this.finalCanAdvance || this.isLoading_) return;
-    this.isLoading = true;
-    this.onAdvance.emit();
-    setTimeout(() => this.isLoading = false, 500);
+    this.onAdvance.emit(); 
   }
 
   handleRegress(): void {
     if (!this.finalCanRegress || this.isLoading_) return;
-    this.isLoading = true;
-    this.onRegress.emit();
-    setTimeout(() => this.isLoading = false, 500);
+    this.onRegress.emit(); 
   }
 
   handleDelete(): void {
@@ -211,8 +203,12 @@ export class TaskCardComponent {
 
   handleAddComment(): void {
     if (!this.commentText.trim() || this.isLoading_) return;
+    this.isLoading = true; 
     this.onAddComment.emit(this.commentText.trim());
     this.commentText = '';
+    
+  
+    setTimeout(() => this.isLoading = false, 500);
   }
 
   toggleComments(): void {
@@ -250,30 +246,6 @@ export class TaskCardComponent {
   isOverdue(): boolean {
     if (!this.task.dueDate || this.isClosed) return false;
     return new Date(this.task.dueDate) < new Date();
-  }
-
-  getPriorityColor(): string {
-    switch (this.task.priority) {
-      case 'ALTA':
-      case 'URGENTE':
-        return 'text-rose-600 bg-rose-50 dark:bg-rose-900/20';
-      case 'MEDIA':
-        return 'text-amber-600 bg-amber-50 dark:bg-amber-900/20';
-      case 'BAIXA':
-        return 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20';
-      default:
-        return 'text-slate-600 bg-slate-50 dark:bg-slate-800';
-    }
-  }
-
-  getPriorityLabel(): string {
-    switch (this.task.priority) {
-      case 'URGENTE': return 'Urgente';
-      case 'ALTA': return 'Alta';
-      case 'MEDIA': return 'Média';
-      case 'BAIXA': return 'Baixa';
-      default: return 'Normal';
-    }
   }
 
   getRecentComments(): Comment[] {

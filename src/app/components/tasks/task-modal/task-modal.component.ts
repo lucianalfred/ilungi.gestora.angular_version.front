@@ -81,15 +81,15 @@ export class TaskModalComponent implements OnInit, OnChanges {
   }
 
   loadUsers(): void {
-    // Carregar usuários diretamente do signal
+ 
     this.usersService.loadUsers();
-    this.users = this.usersService.users(); // users() é um signal, então chamamos como função
+    this.users = this.usersService.users(); 
   }
 
   loadTasks(): void {
     // Se tasksService também usa signals
     this.tasksService.loadTasks();
-    this.tasks = this.tasksService.tasks(); // Assumindo que tasksService tem um signal tasks()
+    this.tasks = this.tasksService.tasks(); 
   }
 
   loadTaskForEdit(): void {

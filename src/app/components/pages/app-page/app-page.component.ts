@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 
@@ -19,6 +19,8 @@ import { ActivitiesService } from '../../../services/activities.service';
 import { NavigationService } from '../../../services/navigation.service';
 import { LanguageService } from '../../../services/language.service';
 import { ThemeService } from '../../../services/theme.service';
+
+
 
 import {
   User,
@@ -50,7 +52,7 @@ export class AppPageComponent implements OnInit, OnDestroy {
 
   readonly TaskStatus = TaskStatus;
   readonly UserRole = UserRole;
-
+  readonly users = computed(() => this.usersService.users() ?? []);
   // ================================
   // Signals (estado local)
   // ================================
@@ -84,9 +86,8 @@ export class AppPageComponent implements OnInit, OnDestroy {
   // Lifecycle
   // ================================
   ngOnInit(): void {
-    if (this.user) {
-      this.loadUserData();
-    }
+      
+    this.loadUserData();
   }
 
   ngOnDestroy(): void {
@@ -109,13 +110,9 @@ export class AppPageComponent implements OnInit, OnDestroy {
     return this.tasksService.filteredTasks();
   }
 
-  get users() {
-    const usersList = this.usersService.users();
-    console.log('👥 [AppPage] users() retornou:', usersList?.length || 0, usersList); 
-     return usersList || [];
-  }
+  
 
-  // ⚠️ Getter — NÃO é função
+
   get notifications(): Notification[] {
     return this.notificationsService.notifications();
   }
@@ -151,7 +148,9 @@ export class AppPageComponent implements OnInit, OnDestroy {
     }
   }
 
-   // No AppPageComponent
+  unreadCount = computed(() => {
+    return this.notifications.filter(n => !n.read).length;
+  });
    handleSetActiveTabSafe(tab: string): void {
      this.setActiveTabSafe(tab as TabType);
    }
@@ -296,11 +295,11 @@ export class AppPageComponent implements OnInit, OnDestroy {
   handleDeleteUser(userId: string): void {
     this.usersService.deleteUser(userId);
   }
-// app-page.component.ts
+
 async handleCreateTask(taskData: any): Promise<void> {
   try {
     const newTask = await this.tasksService.createTask(taskData);
-    console.log('✅ Tarefa criada no AppPage:', newTask);
+    
     
    
     //this.closeTaskModal();
@@ -320,7 +319,7 @@ async handleCreateTask(taskData: any): Promise<void> {
   }
 }
   // ================================
-  // NOVO MÉTODO PARA CRIAR USUÁRIO
+  // MÉTODO PARA CRIAR USUÁRIO
   // ================================
   handleCreateUser(userData: any): void {
     this.usersService.createUser(userData);

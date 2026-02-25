@@ -109,12 +109,13 @@
 
           <button
             (click)="isNotificationsOpen.set(!isNotificationsOpen())"
-            class="p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+            class="p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white relative">
             <app-icon name="bell" [size]="20"></app-icon>
 
-            <span
-              *ngIf="hasUnreadNotifications()"
-              class="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white dark:border-slate-900">
+            <!-- 🔥 CONTADOR DE NOTIFICAÇÕES NÃO LIDAS -->
+            <span *ngIf="unreadCount() > 0"
+                  class="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 border-2 border-white dark:border-slate-900">
+              {{ unreadCount() > 9 ? '9+' : unreadCount() }}
             </span>
           </button>
 
@@ -125,11 +126,12 @@
 
             <div class="p-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
               <span class="font-bold text-sm text-slate-900 dark:text-white">
-                Notificações
+                Notificações <span *ngIf="unreadCount() > 0" class="ml-1 text-rose-500">({{ unreadCount() }})</span>
               </span>
               <button
                 (click)="markAllNotificationsAsRead()"
-                class="text-xs text-emerald-600 hover:text-emerald-700">
+                class="text-xs text-emerald-600 hover:text-emerald-700"
+                *ngIf="unreadCount() > 0">
                 Marcar todas
               </button>
             </div>
@@ -141,25 +143,38 @@
                 Sem notificações
               </p>
 
+              <!-- 🔥 NOTIFICAÇÕES COM DESTAQUE PARA NÃO LIDAS -->
               <div
                 *ngFor="let notif of notifications"
-                class="p-3 border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
-                (click)="markNotificationAsRead(notif.id)">
+                (click)="markNotificationAsRead(notif.id)"
+                class="p-3 border-b border-slate-100 dark:border-slate-700 cursor-pointer transition-colors"
+                [ngClass]="{
+                  'bg-blue-50/70 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30': !notif.read,
+                  'hover:bg-slate-50 dark:hover:bg-slate-700': notif.read
+                }">
 
                 <div class="flex justify-between items-start gap-2">
-                  <span class="text-sm text-slate-900 dark:text-white flex-1">
+                  <span class="text-sm flex-1" 
+                        [ngClass]="{
+                          'text-slate-900 dark:text-white font-medium': !notif.read,
+                          'text-slate-600 dark:text-slate-400': notif.read
+                        }">
                     {{ notif.message }}
                   </span>
+
+                  <!-- Indicador de não lida -->
+                  <span *ngIf="!notif.read" 
+                        class="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></span>
 
                   <app-icon
                     *ngIf="notif.read"
                     name="check"
                     [size]="14"
-                    class="text-emerald-500">
+                    class="text-emerald-500 flex-shrink-0">
                   </app-icon>
                 </div>
 
-                <small class="text-xs text-slate-400">
+                <small class="text-xs text-slate-400 block mt-1">
                   {{ notif.timestamp | date:'dd/MM/yyyy HH:mm' }}
                 </small>
 
@@ -190,33 +205,32 @@
           <app-dashboard-view 
             [stats]="stats"
             [tasks]="tasks"
-            [users]="users"
+            [users]="users()"
             [user]="user">
           </app-dashboard-view>
         </div>
 
         <!-- Tasks View -->
-        <!-- Tasks View - CORRIGIDO (removido [tasks]) -->
-<div *ngIf="activeTab() === 'tasks'" class="h-full">
-  <app-tasks-view 
-    [users]="users"
-    [user]="user"
-    [searchQuery]="searchQuery()"
-    [statusFilter]="statusFilter()"
-    [isLoading]="false"
-    (searchChange)="handleSearchChange($event)"
-    (statusFilterChange)="handleStatusFilterChange($event)"
-    (advanceStatus)="handleAdvanceStatus($event)"
-    (regressStatus)="handleRegressStatus($event)"
-    (deleteTask)="handleDeleteTask($event)"
-    (addComment)="handleAddComment($event.taskId, $event.text)">
-  </app-tasks-view>
-</div>
+        <div *ngIf="activeTab() === 'tasks'" class="h-full">
+          <app-tasks-view 
+            [users]="users()"
+            [user]="user"
+            [searchQuery]="searchQuery()"
+            [statusFilter]="statusFilter()"
+            [isLoading]="false"
+            (searchChange)="handleSearchChange($event)"
+            (statusFilterChange)="handleStatusFilterChange($event)"
+            (advanceStatus)="handleAdvanceStatus($event)"
+            (regressStatus)="handleRegressStatus($event)"
+            (deleteTask)="handleDeleteTask($event)"
+            (addComment)="handleAddComment($event.taskId, $event.text)">
+          </app-tasks-view>
+        </div>
 
         <!-- Users View -->
         <div *ngIf="activeTab() === 'users' && user?.role === UserRole.ADMIN" class="h-full">
           <app-users-view 
-            [users]="users"
+            [users]="users()"
             [currentUser]="user"
             [getAvatarUrl]="getAvatarUrl.bind(this)"
             (updateUser)="handleUpdateUser($event.id, $event.data)"
@@ -230,11 +244,11 @@
         <div *ngIf="activeTab() === 'reports' && user.role === UserRole.ADMIN" class="h-full">
           <app-reports-view 
             [tasks]="tasks"
-            [users]="users">
+            [users]="users()">
           </app-reports-view>
         </div>
 
-        <!-- Profile View - COMPLETO COM TODOS OS INPUTS -->
+        <!-- Profile View -->
         <div *ngIf="activeTab() === 'profile'" class="h-full">
           <app-profile-view 
             [user]="user"

@@ -1,4 +1,5 @@
 import { Injectable, signal, computed } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { ApiService } from './api.service';
 import { Task, TaskStatus } from '../models/types';
 import { mapTaskFromAPI } from '../utils/mapper';
@@ -13,12 +14,20 @@ export class TasksService {
   private isLoadingSignal = signal(false);
   private searchQuerySignal = signal('');
   private statusFilterSignal = signal<string>('all');
+  
+  // 🔥 NOVO: Signal para controlar loading de cada tarefa individualmente
+  private updatingTaskIdSignal = signal<string | null>(null);
+  private deletingTaskIdSignal = signal<string | null>(null);
 
   // Signals públicos
   public tasks = this.tasksSignal.asReadonly();
   public isLoading = this.isLoadingSignal.asReadonly();
   public searchQuery = this.searchQuerySignal.asReadonly();
   public statusFilter = this.statusFilterSignal.asReadonly();
+  
+  // 🔥 Signals para loading de tarefas individuais
+  public updatingTaskId = this.updatingTaskIdSignal.asReadonly();
+  public deletingTaskId = this.deletingTaskIdSignal.asReadonly();
 
   // Computed signals
   public filteredTasks = computed(() => {
@@ -57,13 +66,13 @@ export class TasksService {
   async loadTasks() {
     this.isLoadingSignal.set(true);
     try {
-      const response = await this.apiService.getMyTasks().toPromise();
+      const response = await firstValueFrom(this.apiService.getMyTasks());
       const tasks = Array.isArray(response) 
         ? response.map(mapTaskFromAPI)
         : [];
       this.tasksSignal.set(tasks);
     } catch (error) {
-     
+      console.error('Erro ao carregar tarefas:', error);
       this.tasksSignal.set([]);
     } finally {
       this.isLoadingSignal.set(false);
@@ -73,50 +82,57 @@ export class TasksService {
   async loadAllTasks() {
     this.isLoadingSignal.set(true);
     try {
-      const response = await this.apiService.getAllTasks().toPromise();
+      const response = await firstValueFrom(this.apiService.getAllTasks());
       const tasks = Array.isArray(response) 
         ? response.map(mapTaskFromAPI)
         : [];
       this.tasksSignal.set(tasks);
     } catch (error) {
-      
+      console.error('Erro ao carregar todas as tarefas:', error);
       this.tasksSignal.set([]);
     } finally {
       this.isLoadingSignal.set(false);
     }
   }
 
-  // tasks.service.ts
-async createTask(taskData: any): Promise<Task> {
-  this.isLoadingSignal.set(true);
-  try {
-    const response = await this.apiService.createTask(taskData).toPromise();
-    const newTask = mapTaskFromAPI(response);
-    
-    
-    this.tasksSignal.update(tasks => [...tasks, newTask]);
-    
-    console.log('✅ Nova tarefa criada e adicionada ao signal:', newTask);
-    console.log('📊 Total de tarefas agora:', this.tasksSignal().length);
-    
-    this.notificationsService.addNotification(
-      'system',
-      `Tarefa "${newTask.title}" criada com sucesso.`,
-      'success'
-    );
-    
-    return newTask;
-  } catch (error) {
-    console.error('Erro ao criar tarefa:', error);
-    throw error;
-  } finally {
-    this.isLoadingSignal.set(false);
+  async createTask(taskData: any): Promise<Task> {
+    this.isLoadingSignal.set(true);
+    try {
+      const response = await firstValueFrom(this.apiService.createTask(taskData));
+      const newTask = mapTaskFromAPI(response);
+      
+      this.tasksSignal.update(tasks => [...tasks, newTask]);
+      
+      this.notificationsService.addNotification(
+        'system',
+        `Tarefa "${newTask.title}" criada com sucesso.`,
+        'success'
+      );
+      
+      this.activitiesService.addActivity({
+        type: 'task_created',
+        taskId: newTask.id,
+        taskTitle: newTask.title,
+        description: `Tarefa criada: ${newTask.title}`
+      });
+      
+      return newTask;
+    } catch (error) {
+      this.notificationsService.addNotification(
+        'system',
+        'Erro ao criar tarefa. Tente novamente.',
+        'error'
+      );
+      throw error;
+    } finally {
+      this.isLoadingSignal.set(false);
+    }
   }
-}
+
   async updateTask(id: string, taskData: any): Promise<Task> {
     this.isLoadingSignal.set(true);
     try {
-      const response = await this.apiService.updateTask(id, taskData).toPromise();
+      const response = await firstValueFrom(this.apiService.updateTask(id, taskData));
       const updatedTask = mapTaskFromAPI(response);
       
       this.tasksSignal.update(tasks => 
@@ -138,7 +154,6 @@ async createTask(taskData: any): Promise<Task> {
       
       return updatedTask;
     } catch (error) {
-      console.error('Erro ao atualizar tarefa:', error);
       this.notificationsService.addNotification(
         'system',
         'Erro ao atualizar tarefa. Tente novamente.',
@@ -151,9 +166,10 @@ async createTask(taskData: any): Promise<Task> {
   }
 
   async deleteTask(task: Task): Promise<void> {
-    this.isLoadingSignal.set(true);
+    this.deletingTaskIdSignal.set(task.id); // 🔥 Inicia loading para esta task
+    
     try {
-      await this.apiService.deleteTask(task.id).toPromise();
+      await firstValueFrom(this.apiService.deleteTask(task.id));
       
       this.tasksSignal.update(tasks => tasks.filter(t => t.id !== task.id));
       
@@ -170,7 +186,6 @@ async createTask(taskData: any): Promise<Task> {
         description: `Tarefa eliminada: ${task.title}`
       });
     } catch (error) {
-      console.error('Erro ao eliminar tarefa:', error);
       this.notificationsService.addNotification(
         'system',
         'Erro ao eliminar tarefa. Tente novamente.',
@@ -178,11 +193,13 @@ async createTask(taskData: any): Promise<Task> {
       );
       throw error;
     } finally {
-      this.isLoadingSignal.set(false);
+      this.deletingTaskIdSignal.set(null); // 🔥 Termina loading
     }
   }
 
   async advanceStatus(task: Task): Promise<void> {
+    this.updatingTaskIdSignal.set(task.id); // 🔥 Inicia loading para esta task
+    
     try {
       let nextStatus: TaskStatus;
       switch (task.status) {
@@ -196,10 +213,11 @@ async createTask(taskData: any): Promise<Task> {
           nextStatus = TaskStatus.FECHADO;
           break;
         default:
+          this.updatingTaskIdSignal.set(null);
           return;
       }
       
-      await this.apiService.updateTaskStatus(task.id, nextStatus).toPromise();
+      await firstValueFrom(this.apiService.updateTaskStatus(task.id, nextStatus));
       
       // Atualizar localmente
       this.tasksSignal.update(tasks => 
@@ -217,10 +235,14 @@ async createTask(taskData: any): Promise<Task> {
     } catch (error) {
       console.error('Erro ao avançar status:', error);
       throw error;
+    } finally {
+      this.updatingTaskIdSignal.set(null); // 🔥 Termina loading
     }
   }
 
   async regressStatus(task: Task): Promise<void> {
+    this.updatingTaskIdSignal.set(task.id); // 🔥 Inicia loading para esta task
+    
     try {
       let prevStatus: TaskStatus;
       switch (task.status) {
@@ -234,10 +256,11 @@ async createTask(taskData: any): Promise<Task> {
           prevStatus = TaskStatus.TERMINADO;
           break;
         default:
+          this.updatingTaskIdSignal.set(null);
           return;
       }
       
-      await this.apiService.updateTaskStatus(task.id, prevStatus).toPromise();
+      await firstValueFrom(this.apiService.updateTaskStatus(task.id, prevStatus));
       
       // Atualizar localmente
       this.tasksSignal.update(tasks => 
@@ -255,14 +278,18 @@ async createTask(taskData: any): Promise<Task> {
     } catch (error) {
       console.error('Erro ao regredir status:', error);
       throw error;
+    } finally {
+      this.updatingTaskIdSignal.set(null); 
     }
   }
 
   async addComment(taskId: string, text: string): Promise<void> {
+    this.updatingTaskIdSignal.set(taskId);
+    
     try {
-      await this.apiService.createComment(taskId, text).toPromise();
+      await firstValueFrom(this.apiService.createComment(taskId, text));
       
-      // Recarregar tarefas para obter o comentário
+      
       await this.loadTasks();
       
       this.activitiesService.addActivity({
@@ -273,6 +300,8 @@ async createTask(taskData: any): Promise<Task> {
     } catch (error) {
       console.error('Erro ao adicionar comentário:', error);
       throw error;
+    } finally {
+      this.updatingTaskIdSignal.set(null); 
     }
   }
 

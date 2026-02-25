@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, computed, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, computed, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime } from 'rxjs';
@@ -25,7 +25,8 @@ import { LanguageService } from '../../../services/language.service';
     LoadingOverlayComponent
   ],
   templateUrl: './users-view.component.html',
-  styleUrls: ['./users-view.component.css']
+  styleUrls: ['./users-view.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UsersViewComponent implements OnInit, OnDestroy {
   @Input() users: User[] = [];
@@ -42,7 +43,7 @@ export class UsersViewComponent implements OnInit, OnDestroy {
 
   readonly UserRole = UserRole;
 
-  // ✅ SIGNALS REATIVOS
+  // Signals reativos
   searchQuery = signal('');
   roleFilter = signal<string>('all');
   isAddUserOpen = signal(false);
@@ -50,61 +51,21 @@ export class UsersViewComponent implements OnInit, OnDestroy {
   isUpdatePending = signal(false);
   isDeletePending = signal(false);
 
-  // ✅ COMPUTED SIGNALS - COM LOGS DE DEBUG
-  filteredUsers = computed(() => {
-    console.log('🚀 === COMPUTED FILTER EXECUTADO === Total users:', this.users?.length || 0);
-    console.log('📊 Usuários recebidos:', this.users);
-    
-    if (!this.users || this.users.length === 0) {
-      console.log('⚠️ Nenhum usuário recebido');
-      return [];
-    }
-    
-    const query = this.searchQuery().toLowerCase();
-    const roleFilterValue = this.roleFilter();
-    
-    const filtered = this.users.filter(user => {
-      const matchesSearch = query === '' || 
-        user.name.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query) ||
-        (user.position && user.position.toLowerCase().includes(query));
-      
-      const matchesRole = roleFilterValue === 'all' || user.role === roleFilterValue;
-      
-      return matchesSearch && matchesRole;
-    });
-    
-    console.log('✅ Usuários filtrados:', filtered.length);
-    return filtered;
-  });
-
-  sortedUsers = computed(() => {
-    const filtered = this.filteredUsers();
-    console.log('📊 Ordenando usuários. Quantidade filtrada:', filtered.length);
-    
-    const sorted = [...filtered].sort((a, b) => {
-      if (a.role === UserRole.ADMIN && b.role !== UserRole.ADMIN) return -1;
-      if (a.role !== UserRole.ADMIN && b.role === UserRole.ADMIN) return 1;
-      return a.name.localeCompare(b.name);
-    });
-    
-    console.log('✅ Usuários ordenados:', sorted.length);
-    return sorted;
-  });
-
   private searchSubject = new Subject<string>();
   private destroy$ = new Subject<void>();
 
-  constructor(private languageService: LanguageService) {}
+  constructor(
+    private languageService: LanguageService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit() {
     this.searchSubject.pipe(
       debounceTime(500)
     ).subscribe(query => {
       this.searchQuery.set(query);
+      this.cdr.markForCheck();
     });
-    
-    console.log('✅ UsersViewComponent inicializado');
   }
 
   ngOnDestroy() {
@@ -116,74 +77,102 @@ export class UsersViewComponent implements OnInit, OnDestroy {
     return this.languageService.translations();
   }
 
-  get stats() {
-    return {
-      total: this.users.length,
-      admins: this.users.filter(u => u.role === UserRole.ADMIN).length,
-      employees: this.users.filter(u => u.role === UserRole.USER).length
-    };
-  }
+  // Usuários filtrados (como useMemo no React)
+  filteredUsers = computed(() => {
+    const search = this.searchQuery().toLowerCase();
+    const role = this.roleFilter();
+    
+    return this.users.filter(user => {
+      const matchesSearch = search === '' || 
+        user.name.toLowerCase().includes(search) ||
+        user.email.toLowerCase().includes(search) ||
+        (user.position && user.position.toLowerCase().includes(search));
+      
+      const matchesRole = role === 'all' || user.role === role;
+      
+      return matchesSearch && matchesRole;
+    });
+  });
+
+  // Usuários ordenados (admins primeiro, depois por nome)
+  sortedUsers = computed(() => {
+    return [...this.filteredUsers()].sort((a, b) => {
+      if (a.role === UserRole.ADMIN && b.role !== UserRole.ADMIN) return -1;
+      if (a.role !== UserRole.ADMIN && b.role === UserRole.ADMIN) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  });
+
+
+  stats = computed(() => ({
+    total: this.users.length,
+    admins: this.users.filter(u => u.role === UserRole.ADMIN).length,
+    employees: this.users.filter(u => u.role === UserRole.USER).length
+  }));
 
   get showUserForm(): boolean {
     return this.isAddUserOpen() || !!this.editingUserId();
   }
 
-  // ✅ TRACKBY OBRIGATÓRIO
+
   trackByUserId(index: number, user: User): string {
     return user.id;
   }
 
-  reloadPage() {
+
+  reloadPage(): void {
     window.location.reload();
   }
 
-  handleEditUser(userId: string) {
-    console.log('✏️ Editando usuário:', userId);
+  // Handlers
+  handleEditUser(userId: string): void {
     this.editingUserId.set(userId);
   }
 
-  handleCloseEdit() {
-    console.log('🔒 Fechando edição');
+  handleCloseEdit(): void {
     this.editingUserId.set(null);
   }
 
-  handleCloseAdd() {
-    console.log('🔒 Fechando adição');
+  handleCloseAdd(): void {
     this.isAddUserOpen.set(false);
   }
 
-  async handleUpdateUser(userId: string, userData: any) {
-    console.log('🔄 Atualizando usuário:', userId, userData);
+  async handleUpdateUser(userId: string, userData: any): Promise<void> {
     this.isUpdatePending.set(true);
     this.updateUser.emit({ id: userId, data: userData });
     this.handleCloseEdit();
-    setTimeout(() => this.isUpdatePending.set(false), 500);
+    setTimeout(() => {
+      this.isUpdatePending.set(false);
+      this.cdr.markForCheck();
+    }, 500);
   }
 
-  async handleDeleteUser(userId: string) {
-    console.log('🗑️ Deletando usuário:', userId);
+  async handleDeleteUser(userId: string): Promise<void> {
     this.isDeletePending.set(true);
     this.deleteUser.emit(userId);
-    setTimeout(() => this.isDeletePending.set(false), 500);
+    setTimeout(() => {
+      this.isDeletePending.set(false);
+      this.cdr.markForCheck();
+    }, 500);
   }
 
-  async handleCreateUser(userData: any) {
-    console.log('➕ Criando usuário:', userData);
+  async handleCreateUser(userData: any): Promise<void> {
     this.isUpdatePending.set(true);
     this.createUser.emit(userData);
     this.handleCloseAdd();
-    setTimeout(() => this.isUpdatePending.set(false), 500);
+    setTimeout(() => {
+      this.isUpdatePending.set(false);
+      this.cdr.markForCheck();
+    }, 500);
   }
 
-  onSearchChange(event: Event) {
+  onSearchChange(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
-    console.log('🔍 Pesquisando:', value);
     this.searchSubject.next(value);
   }
 
-  onRoleFilterChange(event: Event) {
+  onRoleFilterChange(event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
-    console.log('🎯 Filtro de role:', value);
     this.roleFilter.set(value);
   }
 }

@@ -64,9 +64,10 @@ export class UsersService {
         : [];
 
       this._users.set([...users]);
+     
 
     } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
+      
       this._users.set([]);
     } finally {
       this._isLoading.set(false);
@@ -90,6 +91,7 @@ export class UsersService {
         : [];
 
       this._users.set([...users]);
+      console.log('✅ Todos os usuários carregados da API:', users.length);
 
     } catch (error) {
       console.error('Erro ao carregar todos os usuários:', error);
@@ -100,21 +102,23 @@ export class UsersService {
   }
 
   // =====================================================
-  // CREATE USER
+  // CREATE USER - RECARREGA DA API APÓS CRIAR
   // =====================================================
 
   async createUser(userData: any): Promise<User> {
     this._isLoading.set(true);
 
     try {
+      // 1. Cria o usuário na API
       const response = await firstValueFrom(
         this.apiService.createUser(userData)
       );
 
       const newUser = mapUserFromAPI(response);
-
-      this._users.set([...this._users(), newUser]);
-
+      
+      
+      await this.loadAllUsers(); // ou await this.loadUsers() se for apenas admins
+      
       this.notificationsService.addNotification(
         'system',
         `Utilizador "${newUser.name}" criado com sucesso.`,
@@ -144,24 +148,22 @@ export class UsersService {
   }
 
   // =====================================================
-  // UPDATE USER
+  // UPDATE USER - RECARREGA DA API APÓS ATUALIZAR
   // =====================================================
 
   async updateUser(id: string, userData: any): Promise<User> {
     this._isLoading.set(true);
 
     try {
+      // 1. Atualiza o usuário na API
       const response = await firstValueFrom(
         this.apiService.updateUser(id, userData)
       );
 
       const updatedUser = mapUserFromAPI(response);
 
-      const updatedList = this._users().map(u =>
-        u.id === id ? { ...updatedUser } : u
-      );
-
-      this._users.set([...updatedList]);
+    
+      await this.loadAllUsers(); 
 
       this.notificationsService.addNotification(
         'system',
@@ -192,7 +194,7 @@ export class UsersService {
   }
 
   // =====================================================
-  // DELETE USER
+  // DELETE USER - RECARREGA DA API APÓS DELETAR
   // =====================================================
 
   async deleteUser(id: string): Promise<void> {
@@ -202,12 +204,13 @@ export class UsersService {
     this._isLoading.set(true);
 
     try {
+    
       await firstValueFrom(
         this.apiService.deleteUser(id)
       );
 
-      const filtered = this._users().filter(u => u.id !== id);
-      this._users.set([...filtered]);
+    
+      await this.loadAllUsers(); 
 
       this.notificationsService.addNotification(
         'system',
@@ -249,11 +252,8 @@ export class UsersService {
 
       const updatedUser = mapUserFromAPI(response);
 
-      const updatedList = this._users().map(u =>
-        u.id === id ? { ...updatedUser } : u
-      );
-
-      this._users.set([...updatedList]);
+   
+      this.loadUsers();
 
       return updatedUser;
 
@@ -279,13 +279,8 @@ export class UsersService {
         this.apiService.changePassword(id, newPassword, oldPassword)
       );
 
-      const updatedUsers = this._users().map(user =>
-        user.id === id
-          ? { ...user, mustChangePassword: false }
-          : user
-      );
-
-      this._users.set([...updatedUsers]);
+   
+      await this.loadAllUsers();
 
       const updatedUser = this._users().find(u => u.id === id);
 
@@ -330,11 +325,8 @@ export class UsersService {
   }
 
   saveAvatar(userId: string, dataUrl: string): void {
-    const updated = this._users().map(u =>
-      u.id === userId ? { ...u, avatar: dataUrl } : u
-    );
-
-    this._users.set([...updated]);
+   
+    this.loadAllUsers();
     localStorage.setItem(`gestora_avatar_${userId}`, dataUrl);
   }
 }
