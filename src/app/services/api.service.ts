@@ -97,7 +97,7 @@ export class ApiService {
     return this.http.post(`${this.apiUrl}/auth/reset-password`, { token, newPassword, confirmPassword });
   }
 
-  // TAREFAS
+  // TAREFAS (Usuário comum)
   getMyTasks(): Observable<any> {
     return this.http.get(`${this.apiUrl}/tasks/my-tasks`, { headers: this.getHeaders() });
   }
@@ -162,6 +162,10 @@ export class ApiService {
   }
 
   // ADMIN - USUÁRIOS
+  getAdminUsers(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/admin/users`, { headers: this.getHeaders() });
+  }
+
   createUser(userData: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/admin/users`, userData, { headers: this.getHeaders() });
   }
@@ -172,10 +176,6 @@ export class ApiService {
 
   deleteUser(id: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/admin/users/${id}`, { headers: this.getHeaders() });
-  }
-
-  getAdminUsers(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/admin/users`, { headers: this.getHeaders() });
   }
 
   changeUserRole(id: string, role: string): Observable<any> {

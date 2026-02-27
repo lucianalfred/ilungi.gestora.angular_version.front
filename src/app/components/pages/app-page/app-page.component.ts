@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Subscription, interval } from 'rxjs';
@@ -21,6 +21,7 @@ import { ActivitiesService } from '../../../services/activities.service';
 import { NavigationService } from '../../../services/navigation.service';
 import { LanguageService } from '../../../services/language.service';
 import { ThemeService } from '../../../services/theme.service';
+import { InitService } from '../../../services/init.service';
 
 import {
   User,
@@ -49,6 +50,7 @@ import { Translations } from '../../../constants/index';
   styleUrls: ['./app-page.component.css']
 })
 export class AppPageComponent implements OnInit, OnDestroy {
+  private initService = inject(InitService);
 
   readonly TaskStatus = TaskStatus;
   readonly UserRole = UserRole;
@@ -88,13 +90,11 @@ export class AppPageComponent implements OnInit, OnDestroy {
   // ================================
   // Lifecycle
   // ================================
-  ngOnInit(): void {
-   
-    
+  async ngOnInit(): Promise<void> {
     if (this.user) {
-      this.loadUserData();
-      this.loadNotifications();
-      
+      // Os dados já foram carregados pelo appInitGuard
+      // Mas garantimos que estão atualizados
+      await this.initService.initializeApp();
       
       this.notificationsSubscription = interval(30000).pipe(
         switchMap(() => {
@@ -164,7 +164,6 @@ export class AppPageComponent implements OnInit, OnDestroy {
     }
   }
 
- 
   unreadCount = computed(() => {
     return this.notificationsService.unreadCount();
   });
@@ -215,6 +214,22 @@ export class AppPageComponent implements OnInit, OnDestroy {
   // Dados
   // ================================
 
+  async refreshAllData(): Promise<void> {
+    await this.initService.refreshAllData();
+  }
+
+  async refreshTasks(): Promise<void> {
+    await this.initService.refreshTasks();
+  }
+
+  async refreshUsers(): Promise<void> {
+    await this.initService.refreshUsers();
+  }
+
+  async refreshNotifications(): Promise<void> {
+    await this.initService.refreshNotifications();
+  }
+
   loadUserData(): void {
     this.tasksService.loadTasks();
 
@@ -226,9 +241,8 @@ export class AppPageComponent implements OnInit, OnDestroy {
   async loadNotifications(): Promise<void> {
     try {
       await this.notificationsService.loadNotifications();
-     
     } catch (error) {
-     
+      console.error('Erro ao carregar notificações:', error);
     }
   }
 
@@ -260,6 +274,12 @@ export class AppPageComponent implements OnInit, OnDestroy {
       search: this.searchQuery(),
       status
     });
+  }
+
+  clearFilters(): void {
+    this.searchQuery.set('');
+    this.statusFilter.set('all');
+    this.tasksService.clearFilters();
   }
 
   // ================================
@@ -322,10 +342,28 @@ export class AppPageComponent implements OnInit, OnDestroy {
         'success'
       );
     } catch (error) {
-   
+      console.error('Erro ao criar tarefa:', error);
       this.addNotification(
         this.user!.id,
         'Erro ao criar tarefa.',
+        'error'
+      );
+    }
+  }
+
+  async handleUpdateTask(taskId: string, taskData: any): Promise<void> {
+    try {
+      await this.tasksService.updateTask(taskId, taskData);
+      this.addNotification(
+        this.user!.id,
+        'Tarefa atualizada com sucesso!',
+        'success'
+      );
+    } catch (error) {
+      console.error('Erro ao atualizar tarefa:', error);
+      this.addNotification(
+        this.user!.id,
+        'Erro ao atualizar tarefa.',
         'error'
       );
     }
@@ -335,16 +373,94 @@ export class AppPageComponent implements OnInit, OnDestroy {
   // Users
   // ================================
 
-  handleUpdateUser(userId: string, data: any): void {
-    this.usersService.updateUser(userId, data);
+  async handleUpdateUser(userId: string, data: any): Promise<void> {
+    try {
+      await this.usersService.updateUser(userId, data);
+      this.addNotification(
+        this.user!.id,
+        'Utilizador atualizado com sucesso!',
+        'success'
+      );
+    } catch (error) {
+      console.error('Erro ao atualizar utilizador:', error);
+      this.addNotification(
+        this.user!.id,
+        'Erro ao atualizar utilizador.',
+        'error'
+      );
+    }
   }
 
-  handleDeleteUser(userId: string): void {
-    this.usersService.deleteUser(userId);
+  async handleDeleteUser(userId: string): Promise<void> {
+    try {
+      await this.usersService.deleteUser(userId);
+      this.addNotification(
+        this.user!.id,
+        'Utilizador eliminado com sucesso!',
+        'success'
+      );
+    } catch (error) {
+      console.error('Erro ao eliminar utilizador:', error);
+      this.addNotification(
+        this.user!.id,
+        'Erro ao eliminar utilizador.',
+        'error'
+      );
+    }
   }
 
-  handleCreateUser(userData: any): void {
-    this.usersService.createUser(userData);
+  async handleCreateUser(userData: any): Promise<void> {
+    try {
+      await this.usersService.createUser(userData);
+      this.addNotification(
+        this.user!.id,
+        'Utilizador criado com sucesso!',
+        'success'
+      );
+    } catch (error) {
+      console.error('Erro ao criar utilizador:', error);
+      this.addNotification(
+        this.user!.id,
+        'Erro ao criar utilizador.',
+        'error'
+      );
+    }
+  }
+
+  async handleChangeUserRole(userId: string, role: string): Promise<void> {
+    try {
+      await this.usersService.changeUserRole(userId, role);
+      this.addNotification(
+        this.user!.id,
+        'Cargo do utilizador alterado com sucesso!',
+        'success'
+      );
+    } catch (error) {
+      console.error('Erro ao alterar cargo:', error);
+      this.addNotification(
+        this.user!.id,
+        'Erro ao alterar cargo do utilizador.',
+        'error'
+      );
+    }
+  }
+
+  async handleChangePassword(userId: string, newPassword: string, oldPassword?: string): Promise<void> {
+    try {
+      await this.usersService.changePassword(userId, newPassword, oldPassword);
+      this.addNotification(
+        this.user!.id,
+        'Senha alterada com sucesso!',
+        'success'
+      );
+    } catch (error) {
+      console.error('Erro ao alterar senha:', error);
+      this.addNotification(
+        this.user!.id,
+        'Erro ao alterar senha.',
+        'error'
+      );
+    }
   }
 
   // ================================
@@ -362,5 +478,32 @@ export class AppPageComponent implements OnInit, OnDestroy {
   logout(): void {
     this.authService.logout();
     this.router.navigate(['/login']);
+  }
+
+  // ================================
+  // Utilitários
+  // ================================
+
+  getUserById(userId: string): User | undefined {
+    return this.usersService.getUserById(userId);
+  }
+
+  getTaskById(taskId: string): any {
+    return this.tasksService.getTaskById(taskId);
+  }
+
+  formatDate(date: string | Date): string {
+    return new Date(date).toLocaleDateString('pt-PT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  isOverdue(task: any): boolean {
+    if (!task.dueDate) return false;
+    return new Date(task.dueDate) < new Date();
   }
 }

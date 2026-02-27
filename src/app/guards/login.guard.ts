@@ -9,7 +9,6 @@ export const loginGuard = () => {
   const isAuthenticated = authService.isAuthenticated();
   const isLoading = authService.isLoading();
   
- 
   if (isLoading) {
     return true;
   }

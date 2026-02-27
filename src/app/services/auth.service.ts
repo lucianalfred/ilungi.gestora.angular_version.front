@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { ApiService } from './api.service';
 import { User, UserRole } from '../models/types';
 import { mapUserFromAPI } from '../utils/mapper';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -24,7 +25,10 @@ export class AuthService {
     this.loadStoredUser();
   }
 
-  private async loadStoredUser() {
+  /**
+   * Carrega usuário do token armazenado
+   */
+  private async loadStoredUser(): Promise<void> {
     const token = this.apiService.getToken();
     
     if (!token) {
@@ -34,7 +38,7 @@ export class AuthService {
 
     this.isLoadingSignal.set(true);
     try {
-      const response = await this.apiService.getCurrentUser().toPromise();
+      const response = await firstValueFrom(this.apiService.getCurrentUser());
       
       if (response) {
         const user = mapUserFromAPI(response);
@@ -44,6 +48,7 @@ export class AuthService {
         this.userSignal.set(null);
       }
     } catch (error) {
+      console.error('Erro ao carregar usuário:', error);
       this.apiService.removeToken();
       this.userSignal.set(null);
     } finally {
@@ -51,10 +56,13 @@ export class AuthService {
     }
   }
 
+  /**
+   * Realiza login do usuário
+   */
   async login(email: string, password: string, rememberMe: boolean = false): Promise<void> {
     this.isLoadingSignal.set(true);
     try {
-      const response = await this.apiService.login(email, password).toPromise();
+      const response = await firstValueFrom(this.apiService.login(email, password));
       
       const token = response?.token || response?.jwt;
       if (!token) {
@@ -85,12 +93,15 @@ export class AuthService {
     }
   }
 
+  /**
+   * Realiza logout do usuário
+   */
   async logout(): Promise<void> {
     this.isLoadingSignal.set(true);
     try {
-      await this.apiService.logout().toPromise();
+      await firstValueFrom(this.apiService.logout());
     } catch (error) {
-      // Ignorar erro no logout
+      console.error('Erro no logout:', error);
     } finally {
       this.apiService.removeToken();
       this.userSignal.set(null);
@@ -100,16 +111,19 @@ export class AuthService {
     }
   }
 
+  /**
+   * Registra um novo usuário
+   */
   async register(email: string, name: string, password: string): Promise<void> {
     this.isLoadingSignal.set(true);
     try {
-      await this.apiService.register(email, name, password).toPromise();
+      await firstValueFrom(this.apiService.register(email, name, password));
       
       setTimeout(async () => {
         try {
           await this.login(email, password);
         } catch (loginError) {
-          // Ignorar erro no auto-login
+          console.error('Erro no auto-login:', loginError);
         }
       }, 2000);
     } catch (error) {
@@ -119,44 +133,66 @@ export class AuthService {
     }
   }
 
+  /**
+   * Valida token de configuração de senha
+   */
   async validateSetupToken(token: string): Promise<any> {
     try {
-      return await this.apiService.validateSetupToken(token).toPromise();
+      return await firstValueFrom(this.apiService.validateSetupToken(token));
     } catch (error) {
       throw error;
     }
   }
 
+  /**
+   * Configura senha com token
+   */
   async setupPassword(token: string, password: string, confirmPassword: string): Promise<any> {
     try {
-      return await this.apiService.setupPassword(token, password, confirmPassword).toPromise();
+      return await firstValueFrom(this.apiService.setupPassword(token, password, confirmPassword));
     } catch (error) {
       throw error;
     }
   }
 
+  /**
+   * Valida token de reset de senha
+   */
   async validateResetToken(token: string): Promise<any> {
     try {
-      return await this.apiService.validateResetToken(token).toPromise();
+      return await firstValueFrom(this.apiService.validateResetToken(token));
     } catch (error) {
       throw error;
     }
   }
 
+  /**
+   * Reseta senha com token
+   */
   async resetPassword(token: string, newPassword: string, confirmPassword: string): Promise<any> {
     try {
-      return await this.apiService.resetPassword(token, newPassword, confirmPassword).toPromise();
+      return await firstValueFrom(this.apiService.resetPassword(token, newPassword, confirmPassword));
     } catch (error) {
       throw error;
     }
   }
 
-  setUser(user: User | null) {
+  /**
+   * Define o usuário atual
+   */
+  setUser(user: User | null): void {
     this.userSignal.set(user);
     if (user) {
       localStorage.setItem('gestora_user', JSON.stringify(user));
     } else {
       localStorage.removeItem('gestora_user');
     }
+  }
+
+  /**
+   * Recarrega os dados do usuário atual
+   */
+  async refreshUser(): Promise<void> {
+    await this.loadStoredUser();
   }
 }

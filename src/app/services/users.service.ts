@@ -10,36 +10,19 @@ import { ActivitiesService } from './activities.service';
   providedIn: 'root'
 })
 export class UsersService {
+  private usersSignal = signal<User[]>([]);
+  private isLoadingSignal = signal(false);
 
-  // =====================================================
-  // STATE (Signals privados)
-  // =====================================================
+  public users = this.usersSignal.asReadonly();
+  public isLoading = this.isLoadingSignal.asReadonly();
 
-  private _users = signal<User[]>([]);
-  private _isLoading = signal(false);
-
-  // =====================================================
-  // READONLY SIGNALS públicos
-  // =====================================================
-
-  users = this._users.asReadonly();
-  isLoading = this._isLoading.asReadonly();
-
-  // =====================================================
-  // COMPUTED
-  // =====================================================
-
-  admins = computed(() =>
-    this._users().filter(u => u.role === UserRole.ADMIN)
+  public admins = computed(() =>
+    this.usersSignal().filter(u => u.role === UserRole.ADMIN)
   );
 
-  employees = computed(() =>
-    this._users().filter(u => u.role === UserRole.USER)
+  public employees = computed(() =>
+    this.usersSignal().filter(u => u.role === UserRole.USER)
   );
-
-  // =====================================================
-  // CONSTRUCTOR
-  // =====================================================
 
   constructor(
     private apiService: ApiService,
@@ -47,77 +30,71 @@ export class UsersService {
     private activitiesService: ActivitiesService
   ) {}
 
-  // =====================================================
-  // LOAD USERS (apenas admins)
-  // =====================================================
-
+  /**
+   * Carrega usuários da API (apenas admin)
+   */
   async loadUsers(): Promise<void> {
-    this._isLoading.set(true);
+    if (this.isLoadingSignal()) {
+      return;
+    }
 
+    this.isLoadingSignal.set(true);
     try {
-      const response = await firstValueFrom(
-        this.apiService.getAdminUsers()
-      );
-
-      const users = Array.isArray(response)
+      const response = await firstValueFrom(this.apiService.getAdminUsers());
+      
+      const users = Array.isArray(response) 
         ? response.map(mapUserFromAPI)
         : [];
-
-      this._users.set([...users]);
-     
+      
+      this.usersSignal.set(users);
+      
+      localStorage.setItem('gestora_users_last_load', Date.now().toString());
 
     } catch (error) {
-      
-      this._users.set([]);
+      console.error('Erro ao carregar usuários:', error);
+      this.usersSignal.set([]);
     } finally {
-      this._isLoading.set(false);
+      this.isLoadingSignal.set(false);
     }
   }
 
-  // =====================================================
-  // LOAD ALL USERS
-  // =====================================================
-
+  /**
+   * Carrega todos os usuários (endpoint público)
+   */
   async loadAllUsers(): Promise<void> {
-    this._isLoading.set(true);
+    if (this.isLoadingSignal()) {
+      return;
+    }
 
+    this.isLoadingSignal.set(true);
     try {
-      const response = await firstValueFrom(
-        this.apiService.getUsers()
-      );
-
+      const response = await firstValueFrom(this.apiService.getUsers());
+      
       const users = Array.isArray(response)
         ? response.map(mapUserFromAPI)
         : [];
 
-      this._users.set([...users]);
-      
+      this.usersSignal.set(users);
 
     } catch (error) {
-    
-      this._users.set([]);
+      console.error('Erro ao carregar todos os usuários:', error);
+      this.usersSignal.set([]);
     } finally {
-      this._isLoading.set(false);
+      this.isLoadingSignal.set(false);
     }
   }
 
-  // =====================================================
-  // CREATE USER - RECARREGA DA API APÓS CRIAR
-  // =====================================================
-
+  /**
+   * Cria um novo usuário
+   */
   async createUser(userData: any): Promise<User> {
-    this._isLoading.set(true);
+    this.isLoadingSignal.set(true);
 
     try {
-      // 1. Cria o usuário na API
-      const response = await firstValueFrom(
-        this.apiService.createUser(userData)
-      );
-
+      const response = await firstValueFrom(this.apiService.createUser(userData));
       const newUser = mapUserFromAPI(response);
       
-      
-      await this.loadAllUsers(); // ou await this.loadUsers() se for apenas admins
+      await this.loadAllUsers();
       
       this.notificationsService.addNotification(
         'system',
@@ -143,26 +120,20 @@ export class UsersService {
       throw error;
 
     } finally {
-      this._isLoading.set(false);
+      this.isLoadingSignal.set(false);
     }
   }
 
-  // =====================================================
-  // UPDATE USER - RECARREGA DA API APÓS ATUALIZAR
-  // =====================================================
-
+  /**
+   * Atualiza um usuário existente
+   */
   async updateUser(id: string, userData: any): Promise<User> {
-    this._isLoading.set(true);
+    this.isLoadingSignal.set(true);
 
     try {
-      // 1. Atualiza o usuário na API
-      const response = await firstValueFrom(
-        this.apiService.updateUser(id, userData)
-      );
-
+      const response = await firstValueFrom(this.apiService.updateUser(id, userData));
       const updatedUser = mapUserFromAPI(response);
 
-    
       await this.loadAllUsers(); 
 
       this.notificationsService.addNotification(
@@ -189,27 +160,22 @@ export class UsersService {
       throw error;
 
     } finally {
-      this._isLoading.set(false);
+      this.isLoadingSignal.set(false);
     }
   }
 
-  // =====================================================
-  // DELETE USER - RECARREGA DA API APÓS DELETAR
-  // =====================================================
-
+  /**
+   * Remove um usuário
+   */
   async deleteUser(id: string): Promise<void> {
-    const userToDelete = this._users().find(u => u.id === id);
+    const userToDelete = this.usersSignal().find(u => u.id === id);
     if (!userToDelete) return;
 
-    this._isLoading.set(true);
+    this.isLoadingSignal.set(true);
 
     try {
-    
-      await firstValueFrom(
-        this.apiService.deleteUser(id)
-      );
+      await firstValueFrom(this.apiService.deleteUser(id));
 
-    
       await this.loadAllUsers(); 
 
       this.notificationsService.addNotification(
@@ -234,55 +200,41 @@ export class UsersService {
       throw error;
 
     } finally {
-      this._isLoading.set(false);
+      this.isLoadingSignal.set(false);
     }
   }
 
-  // =====================================================
-  // CHANGE ROLE
-  // =====================================================
-
+  /**
+   * Altera o cargo de um usuário
+   */
   async changeUserRole(id: string, role: string): Promise<User> {
-    this._isLoading.set(true);
+    this.isLoadingSignal.set(true);
 
     try {
-      const response = await firstValueFrom(
-        this.apiService.changeUserRole(id, role)
-      );
-
+      const response = await firstValueFrom(this.apiService.changeUserRole(id, role));
       const updatedUser = mapUserFromAPI(response);
 
-   
-      this.loadUsers();
+      await this.loadUsers();
 
       return updatedUser;
 
     } finally {
-      this._isLoading.set(false);
+      this.isLoadingSignal.set(false);
     }
   }
 
-  // =====================================================
-  // CHANGE PASSWORD
-  // =====================================================
-
-  async changePassword(
-    id: string,
-    newPassword: string,
-    oldPassword?: string
-  ): Promise<void> {
-
-    this._isLoading.set(true);
+  /**
+   * Altera a senha de um usuário
+   */
+  async changePassword(id: string, newPassword: string, oldPassword?: string): Promise<void> {
+    this.isLoadingSignal.set(true);
 
     try {
-      await firstValueFrom(
-        this.apiService.changePassword(id, newPassword, oldPassword)
-      );
+      await firstValueFrom(this.apiService.changePassword(id, newPassword, oldPassword));
 
-   
       await this.loadAllUsers();
 
-      const updatedUser = this._users().find(u => u.id === id);
+      const updatedUser = this.usersSignal().find(u => u.id === id);
 
       if (updatedUser) {
         this.notificationsService.addNotification(
@@ -308,25 +260,36 @@ export class UsersService {
       throw error;
 
     } finally {
-      this._isLoading.set(false);
+      this.isLoadingSignal.set(false);
     }
   }
 
-  // =====================================================
-  // HELPERS
-  // =====================================================
-
+  /**
+   * Busca um usuário por ID
+   */
   getUserById(id: string): User | undefined {
-    return this._users().find(u => u.id === id);
+    return this.usersSignal().find(u => u.id === id);
   }
 
+  /**
+   * Retorna a URL do avatar de um usuário
+   */
   getAvatarUrl(user: User): string | null {
     return user.avatar ?? null;
   }
 
+  /**
+   * Salva o avatar de um usuário
+   */
   saveAvatar(userId: string, dataUrl: string): void {
-   
-    this.loadAllUsers();
     localStorage.setItem(`gestora_avatar_${userId}`, dataUrl);
+    this.loadAllUsers();
+  }
+
+  /**
+   * Recarrega os usuários (força atualização)
+   */
+  async refreshUsers(): Promise<void> {
+    await this.loadUsers();
   }
 }

@@ -5,6 +5,7 @@ import { Task, TaskStatus } from '../models/types';
 import { mapTaskFromAPI } from '../utils/mapper';
 import { NotificationsService } from './notifications.service';
 import { ActivitiesService } from './activities.service';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -15,21 +16,17 @@ export class TasksService {
   private searchQuerySignal = signal('');
   private statusFilterSignal = signal<string>('all');
   
-  // 🔥 NOVO: Signal para controlar loading de cada tarefa individualmente
   private updatingTaskIdSignal = signal<string | null>(null);
   private deletingTaskIdSignal = signal<string | null>(null);
 
-  // Signals públicos
   public tasks = this.tasksSignal.asReadonly();
   public isLoading = this.isLoadingSignal.asReadonly();
   public searchQuery = this.searchQuerySignal.asReadonly();
   public statusFilter = this.statusFilterSignal.asReadonly();
   
-  // 🔥 Signals para loading de tarefas individuais
   public updatingTaskId = this.updatingTaskIdSignal.asReadonly();
   public deletingTaskId = this.deletingTaskIdSignal.asReadonly();
 
-  // Computed signals
   public filteredTasks = computed(() => {
     const tasks = this.tasksSignal();
     const search = this.searchQuerySignal().toLowerCase();
@@ -60,17 +57,37 @@ export class TasksService {
   constructor(
     private apiService: ApiService,
     private notificationsService: NotificationsService,
-    private activitiesService: ActivitiesService
+    private activitiesService: ActivitiesService,
+    private authService: AuthService
   ) {}
 
-  async loadTasks() {
+  /**
+   * Carrega tarefas baseado no papel do usuário
+   */
+  async loadTasks(): Promise<void> {
+    if (this.isLoadingSignal()) {
+      return;
+    }
+
     this.isLoadingSignal.set(true);
     try {
-      const response = await firstValueFrom(this.apiService.getMyTasks());
+      const isAdmin = this.authService.isAdmin();
+      
+      let response;
+      if (isAdmin) {
+        response = await firstValueFrom(this.apiService.getAllTasks());
+      } else {
+        response = await firstValueFrom(this.apiService.getMyTasks());
+      }
+      
       const tasks = Array.isArray(response) 
         ? response.map(mapTaskFromAPI)
         : [];
+      
       this.tasksSignal.set(tasks);
+      
+      localStorage.setItem('gestora_tasks_last_load', Date.now().toString());
+
     } catch (error) {
       console.error('Erro ao carregar tarefas:', error);
       this.tasksSignal.set([]);
@@ -79,7 +96,15 @@ export class TasksService {
     }
   }
 
-  async loadAllTasks() {
+  /**
+   * Carrega todas as tarefas (apenas admin)
+   */
+  async loadAllTasks(): Promise<void> {
+    if (!this.authService.isAdmin()) {
+      console.warn('⚠️ Apenas admin pode carregar todas as tarefas');
+      return;
+    }
+    
     this.isLoadingSignal.set(true);
     try {
       const response = await firstValueFrom(this.apiService.getAllTasks());
@@ -95,10 +120,38 @@ export class TasksService {
     }
   }
 
+  /**
+   * Carrega apenas tarefas do usuário atual
+   */
+  async loadMyTasks(): Promise<void> {
+    this.isLoadingSignal.set(true);
+    try {
+      const response = await firstValueFrom(this.apiService.getMyTasks());
+      const tasks = Array.isArray(response) 
+        ? response.map(mapTaskFromAPI)
+        : [];
+      this.tasksSignal.set(tasks);
+    } catch (error) {
+      console.error('Erro ao carregar minhas tarefas:', error);
+      this.tasksSignal.set([]);
+    } finally {
+      this.isLoadingSignal.set(false);
+    }
+  }
+
+  /**
+   * Cria uma nova tarefa
+   */
   async createTask(taskData: any): Promise<Task> {
     this.isLoadingSignal.set(true);
     try {
-      const response = await firstValueFrom(this.apiService.createTask(taskData));
+      let response;
+      if (this.authService.isAdmin()) {
+        response = await firstValueFrom(this.apiService.createTaskWithResponsibles(taskData));
+      } else {
+        response = await firstValueFrom(this.apiService.createTask(taskData));
+      }
+      
       const newTask = mapTaskFromAPI(response);
       
       this.tasksSignal.update(tasks => [...tasks, newTask]);
@@ -129,6 +182,9 @@ export class TasksService {
     }
   }
 
+  /**
+   * Atualiza uma tarefa existente
+   */
   async updateTask(id: string, taskData: any): Promise<Task> {
     this.isLoadingSignal.set(true);
     try {
@@ -165,8 +221,11 @@ export class TasksService {
     }
   }
 
+  /**
+   * Remove uma tarefa
+   */
   async deleteTask(task: Task): Promise<void> {
-    this.deletingTaskIdSignal.set(task.id); // 🔥 Inicia loading para esta task
+    this.deletingTaskIdSignal.set(task.id);
     
     try {
       await firstValueFrom(this.apiService.deleteTask(task.id));
@@ -193,12 +252,15 @@ export class TasksService {
       );
       throw error;
     } finally {
-      this.deletingTaskIdSignal.set(null); // 🔥 Termina loading
+      this.deletingTaskIdSignal.set(null);
     }
   }
 
+  /**
+   * Avança o status de uma tarefa
+   */
   async advanceStatus(task: Task): Promise<void> {
-    this.updatingTaskIdSignal.set(task.id); // 🔥 Inicia loading para esta task
+    this.updatingTaskIdSignal.set(task.id);
     
     try {
       let nextStatus: TaskStatus;
@@ -219,7 +281,6 @@ export class TasksService {
       
       await firstValueFrom(this.apiService.updateTaskStatus(task.id, nextStatus));
       
-      // Atualizar localmente
       this.tasksSignal.update(tasks => 
         tasks.map(t => t.id === task.id ? { ...t, status: nextStatus } : t)
       );
@@ -233,15 +294,17 @@ export class TasksService {
         description: `Status alterado: ${task.status} → ${nextStatus}`
       });
     } catch (error) {
-      console.error('Erro ao avançar status:', error);
       throw error;
     } finally {
-      this.updatingTaskIdSignal.set(null); // 🔥 Termina loading
+      this.updatingTaskIdSignal.set(null);
     }
   }
 
+  /**
+   * Regride o status de uma tarefa
+   */
   async regressStatus(task: Task): Promise<void> {
-    this.updatingTaskIdSignal.set(task.id); // 🔥 Inicia loading para esta task
+    this.updatingTaskIdSignal.set(task.id);
     
     try {
       let prevStatus: TaskStatus;
@@ -262,7 +325,6 @@ export class TasksService {
       
       await firstValueFrom(this.apiService.updateTaskStatus(task.id, prevStatus));
       
-      // Atualizar localmente
       this.tasksSignal.update(tasks => 
         tasks.map(t => t.id === task.id ? { ...t, status: prevStatus } : t)
       );
@@ -276,19 +338,20 @@ export class TasksService {
         description: `Status alterado: ${task.status} → ${prevStatus}`
       });
     } catch (error) {
-      console.error('Erro ao regredir status:', error);
       throw error;
     } finally {
-      this.updatingTaskIdSignal.set(null); 
+      this.updatingTaskIdSignal.set(null);
     }
   }
 
+  /**
+   * Adiciona um comentário a uma tarefa
+   */
   async addComment(taskId: string, text: string): Promise<void> {
     this.updatingTaskIdSignal.set(taskId);
     
     try {
       await firstValueFrom(this.apiService.createComment(taskId, text));
-      
       
       await this.loadTasks();
       
@@ -298,14 +361,16 @@ export class TasksService {
         description: `Comentário adicionado à tarefa`
       });
     } catch (error) {
-      console.error('Erro ao adicionar comentário:', error);
       throw error;
     } finally {
-      this.updatingTaskIdSignal.set(null); 
+      this.updatingTaskIdSignal.set(null);
     }
   }
 
-  filterTasks(filters: { search?: string; status?: string }) {
+  /**
+   * Aplica filtros às tarefas
+   */
+  filterTasks(filters: { search?: string; status?: string }): void {
     if (filters.search !== undefined) {
       this.searchQuerySignal.set(filters.search);
     }
@@ -314,7 +379,25 @@ export class TasksService {
     }
   }
 
+  /**
+   * Busca uma tarefa por ID
+   */
   getTaskById(id: string): Task | undefined {
     return this.tasksSignal().find(t => t.id === id);
+  }
+
+  /**
+   * Limpa os filtros aplicados
+   */
+  clearFilters(): void {
+    this.searchQuerySignal.set('');
+    this.statusFilterSignal.set('all');
+  }
+
+  /**
+   * Recarrega as tarefas (força atualização)
+   */
+  async refreshTasks(): Promise<void> {
+    await this.loadTasks();
   }
 }
