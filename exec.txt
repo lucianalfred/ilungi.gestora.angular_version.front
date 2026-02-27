@@ -1,0 +1,15 @@
+# Construir a imagem
+docker build -f Dockerfile.prod -t gestora-frontend:prod .
+
+# Executar o container
+docker run -d \
+  --name gestora-frontend \
+  -p 8080:8080 \
+  -e API_URL=http://host.docker.internal:8083 \
+  gestora-frontend:prod
+
+# Verificar logs
+docker logs gestora-frontend
+
+# Testar acesso
+curl http://localhost:8080

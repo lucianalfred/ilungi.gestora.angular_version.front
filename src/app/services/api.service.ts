@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../enviroments/enviroment';
+import { environment } from '../../enviroments/enviroment';
 
 @Injectable({
   providedIn: 'root'
@@ -221,7 +221,12 @@ export class ApiService {
   }
 
   // CHANGE PASSWORD
+  // CHANGE PASSWORD - CORRIGIDO
   changePassword(id: string, newPassword: string, oldPassword?: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/auth/change-password`, { id, newPassword, oldPassword }, { headers: this.getHeaders() });
-  }
+  
+  return this.http.patch(`${this.apiUrl}/users/${id}/password`, 
+    { password: newPassword }, // O backend só espera 'password' pelo que vi no seu código
+    { headers: this.getHeaders() }
+  );
+}
 }

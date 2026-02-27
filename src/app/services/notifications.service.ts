@@ -19,25 +19,25 @@ export class NotificationsService {
     return this.notificationsSignal().filter(n => !n.read).length;
   });
 
-  private readonly MIN_FETCH_INTERVAL = 60000; // 1 minuto
+  private readonly MIN_FETCH_INTERVAL = 3600000; // 1 minuto
 
   constructor(
     private apiService: ApiService,
     private authService: AuthService
   ) {
+    
     effect(() => {
       const user = this.authService.user();
       if (user) {
-        this.loadNotifications(true);
+    
+        setTimeout(() => this.loadNotifications(true), 0);
       } else {
-        this.clearNotifications();
+      
+        setTimeout(() => this.clearNotifications(), 0);
       }
-    });
+    }, { allowSignalWrites: true }); 
   }
 
-  /**
-   * Carrega notificações da API
-   */
   async loadNotifications(force: boolean = false): Promise<void> {
     if (this.isLoadingSignal()) {
       return;
@@ -61,20 +61,21 @@ export class NotificationsService {
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
 
+ 
       this.notificationsSignal.set(notifications);
       this.lastFetchTimestamp.set(now);
       
       localStorage.setItem('gestora_notifications', JSON.stringify(notifications));
       
     } catch (error) {
-
+      console.error('Erro ao carregar notificações:', error);
       
       const cached = localStorage.getItem('gestora_notifications');
       if (cached) {
         try {
           this.notificationsSignal.set(JSON.parse(cached));
         } catch (e) {
-          // Ignorar erro de parse
+  
         }
       }
     } finally {
@@ -82,9 +83,6 @@ export class NotificationsService {
     }
   }
 
-  /**
-   * Carrega apenas notificações não lidas
-   */
   async loadUnreadNotifications(force: boolean = false): Promise<void> {
     if (this.isLoadingSignal()) {
       return;
@@ -123,15 +121,12 @@ export class NotificationsService {
       this.lastFetchTimestamp.set(now);
       
     } catch (error) {
-
+ 
     } finally {
       this.isLoadingSignal.set(false);
     }
   }
 
-  /**
-   * Marca todas as notificações como lidas
-   */
   async markAllAsRead(): Promise<void> {
     this.notificationsSignal.update(prev => 
       prev.map(n => ({ ...n, read: true }))
@@ -140,13 +135,10 @@ export class NotificationsService {
     try {
       await firstValueFrom(this.apiService.markAllNotificationsAsRead());
     } catch (error) {
-   
+
     }
   }
 
-  /**
-   * Marca uma notificação como lida
-   */
   async markAsRead(notificationId: string): Promise<void> {
     this.notificationsSignal.update(prev => 
       prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
@@ -155,13 +147,10 @@ export class NotificationsService {
     try {
       await firstValueFrom(this.apiService.markNotificationAsRead(notificationId));
     } catch (error) {
-   
+
     }
   }
 
-  /**
-   * Adiciona uma notificação local
-   */
   addNotification(userId: string, message: string, type: 'info' | 'success' | 'error' = 'info'): void {
     const notification: Notification = {
       id: `local-${Date.now()}`,
@@ -177,41 +166,27 @@ export class NotificationsService {
     });
   }
 
-  /**
-   * Remove uma notificação
-   */
   removeNotification(notificationId: string): void {
     this.notificationsSignal.update(prev => 
       prev.filter(n => n.id !== notificationId)
     );
   }
 
-  /**
-   * Limpa todas as notificações
-   */
   clearNotifications(): void {
+    
     this.notificationsSignal.set([]);
     this.lastFetchTimestamp.set(0);
     localStorage.removeItem('gestora_notifications');
   }
 
-  /**
-   * Recarrega as notificações
-   */
   async refreshNotifications(): Promise<void> {
     await this.loadNotifications(true);
   }
 
-  /**
-   * Recarrega apenas não lidas
-   */
   async refreshUnreadNotifications(): Promise<void> {
     await this.loadUnreadNotifications(true);
   }
 
-  /**
-   * Mapeia uma notificação da API para o modelo
-   */
   private mapNotificationFromAPI(apiNotification: any): Notification {
     return {
       id: apiNotification.id?.toString() || Date.now().toString(),
@@ -225,9 +200,6 @@ export class NotificationsService {
     };
   }
 
-  /**
-   * Mapeia o tipo de notificação
-   */
   private mapNotificationType(type: string): 'info' | 'success' | 'error' {
     switch (type?.toLowerCase()) {
       case 'success':

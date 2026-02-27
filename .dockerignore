@@ -1,0 +1,18 @@
+# .dockerignore
+node_modules
+npm-debug.log
+!dist
+.git
+.github
+.vscode
+.angular
+README.md
+.gitignore
+*.log
+**/*.md
+**/*.txt
+!.dockerignore
+!package*.json
+!angular.json
+!tsconfig*.json
+!src/
