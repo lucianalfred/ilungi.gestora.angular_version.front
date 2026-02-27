@@ -28,8 +28,7 @@ export class ActivitiesService {
    */
   async loadActivities(): Promise<void> {
     // Implementar conforme sua necessidade
-    // Pode buscar da API ou apenas manter local
-    console.log('Atividades carregadas');
+    
   }
 
   /**
@@ -44,9 +43,7 @@ export class ActivitiesService {
     this.activitiesSignal.update(prev => [newActivity, ...prev].slice(0, 50));
   }
 
-  /**
-   * Limpa atividades
-   */
+ 
   clearActivities(): void {
     this.activitiesSignal.set([]);
   }

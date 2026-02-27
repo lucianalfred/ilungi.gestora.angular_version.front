@@ -101,7 +101,7 @@ export class TasksService {
    */
   async loadAllTasks(): Promise<void> {
     if (!this.authService.isAdmin()) {
-      console.warn('⚠️ Apenas admin pode carregar todas as tarefas');
+   
       return;
     }
     
@@ -113,7 +113,7 @@ export class TasksService {
         : [];
       this.tasksSignal.set(tasks);
     } catch (error) {
-      console.error('Erro ao carregar todas as tarefas:', error);
+    
       this.tasksSignal.set([]);
     } finally {
       this.isLoadingSignal.set(false);
@@ -132,7 +132,7 @@ export class TasksService {
         : [];
       this.tasksSignal.set(tasks);
     } catch (error) {
-      console.error('Erro ao carregar minhas tarefas:', error);
+     
       this.tasksSignal.set([]);
     } finally {
       this.isLoadingSignal.set(false);

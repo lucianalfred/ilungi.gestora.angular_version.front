@@ -51,7 +51,7 @@ export class UsersService {
       localStorage.setItem('gestora_users_last_load', Date.now().toString());
 
     } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
+
       this.usersSignal.set([]);
     } finally {
       this.isLoadingSignal.set(false);
@@ -77,7 +77,7 @@ export class UsersService {
       this.usersSignal.set(users);
 
     } catch (error) {
-      console.error('Erro ao carregar todos os usuários:', error);
+    
       this.usersSignal.set([]);
     } finally {
       this.isLoadingSignal.set(false);

@@ -48,7 +48,6 @@ export class AuthService {
         this.userSignal.set(null);
       }
     } catch (error) {
-      console.error('Erro ao carregar usuário:', error);
       this.apiService.removeToken();
       this.userSignal.set(null);
     } finally {
@@ -101,7 +100,7 @@ export class AuthService {
     try {
       await firstValueFrom(this.apiService.logout());
     } catch (error) {
-      console.error('Erro no logout:', error);
+  
     } finally {
       this.apiService.removeToken();
       this.userSignal.set(null);
@@ -123,7 +122,7 @@ export class AuthService {
         try {
           await this.login(email, password);
         } catch (loginError) {
-          console.error('Erro no auto-login:', loginError);
+      
         }
       }, 2000);
     } catch (error) {

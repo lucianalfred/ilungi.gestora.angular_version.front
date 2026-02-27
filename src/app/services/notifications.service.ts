@@ -67,7 +67,7 @@ export class NotificationsService {
       localStorage.setItem('gestora_notifications', JSON.stringify(notifications));
       
     } catch (error) {
-      console.error('Erro ao carregar notificações:', error);
+
       
       const cached = localStorage.getItem('gestora_notifications');
       if (cached) {
@@ -123,7 +123,7 @@ export class NotificationsService {
       this.lastFetchTimestamp.set(now);
       
     } catch (error) {
-      console.error('Erro ao carregar notificações não lidas:', error);
+
     } finally {
       this.isLoadingSignal.set(false);
     }
@@ -140,7 +140,7 @@ export class NotificationsService {
     try {
       await firstValueFrom(this.apiService.markAllNotificationsAsRead());
     } catch (error) {
-      console.error('Erro ao marcar todas como lidas:', error);
+   
     }
   }
 
@@ -155,7 +155,7 @@ export class NotificationsService {
     try {
       await firstValueFrom(this.apiService.markNotificationAsRead(notificationId));
     } catch (error) {
-      console.error('Erro ao marcar notificação como lida:', error);
+   
     }
   }
 

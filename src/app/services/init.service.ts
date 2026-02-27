@@ -39,40 +39,38 @@ export class InitService {
    * Executa a inicialização de fato
    */
   private async performInitialization(): Promise<void> {
-    console.log('🚀 Inicializando aplicação...');
+  
     
     const user = await this.waitForUser();
     
     if (!user) {
-      console.log('❌ Usuário não autenticado');
+      
       return;
     }
 
-    console.log('✅ Usuário carregado:', user.email);
 
     try {
       // Carregar tarefas
-      await this.tasksService.loadTasks();
-      console.log('✅ Tarefas carregadas');
+        await this.tasksService.loadTasks();
+   
 
       // Se for admin, carregar usuários
       if (this.authService.isAdmin()) {
         await this.usersService.loadUsers();
-        console.log('✅ Usuários carregados');
+      
       }
 
       // Carregar notificações
       await this.notificationsService.loadNotifications(true);
-      console.log('✅ Notificações carregadas');
-
+      
       // Carregar atividades (se o método existir)
       if (typeof this.activitiesService.loadActivities === 'function') {
         await this.activitiesService.loadActivities();
-        console.log('✅ Atividades carregadas');
+
       }
 
     } catch (error) {
-      console.error('❌ Erro ao inicializar dados:', error);
+   
       throw error;
     }
   }
