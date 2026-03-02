@@ -13,3 +13,8 @@ docker logs gestora-frontend
 
 # Testar acesso
 curl http://localhost:8080
+
+
+docker run -d --name gestora-frontend -p 8080:8080 -e API_URL=http://host.docker.internal:8083 gestora-frontend:prod
+
+docker run -p 4200:4200 gestora-frontend:prod

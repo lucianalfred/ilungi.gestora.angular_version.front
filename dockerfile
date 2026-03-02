@@ -1,44 +1,57 @@
-# ==================================
-# STAGE 1 — BUILD ANGULAR
-# ==================================
+# frontend/Dockerfile
+# Estágio 1: Build da aplicação Angular
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# melhorar performance
-ENV NG_CLI_ANALYTICS=false
-ENV NODE_OPTIONS=--max-old-space-size=4096
-
-# copiar configs primeiro (cache)
+# Copiar arquivos de configuração
 COPY package*.json ./
 COPY angular.json ./
 COPY tsconfig*.json ./
 
-# instalar dependências
+# Instalar dependências (usando legacy-peer-deps para compatibilidade)
 RUN npm ci --legacy-peer-deps
 
-# copiar resto do projeto
-COPY . .
+# Copiar código fonte
+COPY src/ ./src/
 
-# build produção
-RUN npm run build -- --configuration production
+# Build com configuração de produção
+RUN npx ng build --configuration production --output-path=dist
 
+# Estágio 2: Servir com Nginx
+FROM nginx:alpine
 
-# ==================================
-# STAGE 2 — RUNTIME (SEM NGINX)
-# ==================================
-FROM node:20-alpine
+# Instalar curl para healthcheck
+RUN apk add --no-cache curl
 
-WORKDIR /app
+# Remover configuração padrão do Nginx
+RUN rm -rf /usr/share/nginx/html/* && \
+    rm -rf /etc/nginx/conf.d/default.conf
 
-# servidor estático leve
-RUN npm install -g serve
+# Copiar configuração personalizada do Nginx
+COPY nginx.conf /etc/nginx/nginx.conf
 
-# copiar build angular correto
-COPY --from=builder /app/dist/ilungi.gestora.angular_version.front/browser ./app
+# Copiar os arquivos do build (verifique o caminho correto da sua build)
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-WORKDIR /app/app
+# Ajustar permissões
+RUN chmod -R 755 /usr/share/nginx/html && \
+    chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    chown -R nginx:nginx /etc/nginx/nginx.conf && \
+    touch /var/run/nginx.pid && \
+    chown -R nginx:nginx /var/run/nginx.pid
 
-EXPOSE 4200
+# Healthcheck para o Swarm
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost/ || exit 1
 
-CMD ["serve", "-s", ".", "-l", "4200"]
+# Expor porta
+EXPOSE 80
+
+# Usar usuário não-root
+USER nginx
+
+# Comando para iniciar o Nginx
+CMD ["nginx", "-g", "daemon off;"]

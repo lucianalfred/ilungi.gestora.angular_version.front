@@ -1,4 +1,5 @@
 export const environment = {
   production: true,
-  apiUrl: 'http://backend:8083'
+  apiUrl: 'https://api.gestora.ilungi.digital',
+
 };

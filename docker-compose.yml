@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # ─── PostgreSQL ───────────────────────────────────────────────
+  db_gestora:
+    image: postgres:16
+    volumes:
+      - /opt/gestora.ilungi.digital/data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: gestora
+      POSTGRES_USER: gestora_user
+      POSTGRES_PASSWORD: Gestora@2026!
+    networks:
+      - select
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gestora_user -d gestora"]  # CORRIGIDO
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 1GB
+
+  # ─── Backend (Spring Boot) ────────────────
+  gestora_api:
+    image: lalfredo42/gestora-backend:latest
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # JWT Secret de 256 bits (32 caracteres)
+      JWT_SECRET: "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970"
+    networks:
+      - select
+    depends_on:
+      db_gestora:
+        condition: service_healthy
+    deploy:
+      labels:
+        traefik.enable: 'true'
+        traefik.docker.network: 'select'
+        traefik.http.routers.https_gestora_api.rule: 'Host(`api.gestora.ilungi.digital`)'
+        traefik.http.routers.https_gestora_api.entrypoints: 'https'
+        traefik.http.routers.https_gestora_api.tls.certresolver: 'letsencrypt'
+        traefik.http.services.gestora_api.loadbalancer.server.port: '8080'
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
+      resources:
+        limits:
+          memory: 2GB
+          
+  gestora_frontend:
+    image: lalfredo42/gestora-frontend:latest
+    networks:
+      - select
+    deploy:
+      labels:
+        traefik.enable: 'true'
+        traefik.http.routers.https_gestora_frontend.rule: 'Host(`gestora.ilungi.digital`)'
+        traefik.http.routers.https_gestora_frontend.entrypoints: 'https'
+        traefik.http.routers.https_gestora_frontend.tls.certresolver: 'letsencrypt'
+        traefik.http.services.gestora_frontend.loadbalancer.server.port: '80'
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
+      resources:
+        limits:
+          memory: 512MB
+
+networks:
+  select:
+    external: true
